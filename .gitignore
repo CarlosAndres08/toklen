@@ -1,0 +1,20 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Variables de entorno
+.env
+
+# Node
+node_modules/
+
+# VS Code
+.vscode/
+
+# Archivos subidos
+static/uploads/
+
+# Sistema
+.DS_Store
+Thumbs.db
