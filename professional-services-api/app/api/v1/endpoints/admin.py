@@ -10,6 +10,8 @@ from typing import List
 
 from app.core.database import get_db_session
 from app.api.v1.endpoints.auth import get_current_user
+from app.repositories.notification_repository import NotificationRepository
+from app.models.notification import Notification
 from app.schemas.user import UserResponse, UserRole
 from app.schemas.admin import (
     AdminUserUpdate,
@@ -370,6 +372,16 @@ async def approve_provider_verification(
     if badge not in user.badges:
         user.badges.append(badge)
 
+    # Notificar al proveedor
+    notif_repo = NotificationRepository(db)
+    await notif_repo.create(
+        Notification(
+            user_id=user_id,
+            title="¡Cuenta Verificada!",
+            content="Tu identidad ha sido verificada exitosamente por el equipo de Toklen. Ahora tienes la insignia de confianza en tu perfil."
+        )
+    )
+
     return {"message": f"Usuario {user.nombre} verificado exitosamente", "is_verified": True}
 
 
@@ -384,6 +396,16 @@ async def reject_provider_verification(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Notificar al proveedor
+    notif_repo = NotificationRepository(db)
+    await notif_repo.create(
+        Notification(
+            user_id=user_id,
+            title="Actualización de Verificación",
+            content=f"Tu solicitud de verificación no ha sido aprobada por el siguiente motivo: {body.reason}. Por favor, revisa tus documentos e inténtalo nuevamente."
+        )
+    )
 
     return {
         "message": f"Verificación de {user.nombre} rechazada: {body.reason}",

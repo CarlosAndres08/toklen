@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -27,10 +29,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   late TextEditingController _bioController;
   late TextEditingController _addressController;
 
+  XFile? _selectedImage;
+  Uint8List? _webImage;
+
   @override
   void initState() {
     super.initState();
-    // Cargamos los datos actuales del usuario en los campos de texto
     final UserModel? user = ref.read(authControllerProvider).value?.user;
     _nameController = TextEditingController(text: user?.name ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
@@ -47,22 +51,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickAndUploadImage() async {
+  Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
 
     if (image != null) {
-      final List<int> bytes = await image.readAsBytes();
-      
-      if (!mounted) return;
-      final bool success = await ref
-          .read(profileControllerProvider.notifier)
-          .uploadPicture(fileBytes: bytes, fileName: image.name);
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto de perfil actualizada exitosamente')),
-        );
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _webImage = bytes;
+          _selectedImage = image;
+        });
+      } else {
+        setState(() {
+          _selectedImage = image;
+        });
       }
     }
   }
@@ -70,6 +73,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final messenger = ScaffoldMessenger.of(context);
+
+    // 1. Si hay una imagen nueva, la subimos primero
+    if (_selectedImage != null) {
+      final List<int> bytes = await _selectedImage!.readAsBytes();
+      final imageSuccess = await ref
+          .read(profileControllerProvider.notifier)
+          .uploadPicture(fileBytes: bytes, fileName: _selectedImage!.name);
+
+      if (!imageSuccess) {
+        // El error ya lo maneja el listener del provider mostrando un snackbar
+        return;
+      }
+    }
+
+    // 2. Guardamos los demás datos
     final bool success = await ref
         .read(profileControllerProvider.notifier)
         .updateProfileData(
@@ -80,7 +99,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      setState(() {
+        _selectedImage = null;
+        _webImage = null;
+      });
+      messenger.showSnackBar(
         const SnackBar(content: Text('Perfil guardado correctamente')),
       );
     }
@@ -88,13 +111,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuchamos al usuario actual para actualizar la UI si cambia la foto
     final UserModel? user = ref.watch(authControllerProvider).value?.user;
-    // Escuchamos el estado del perfil para saber si está cargando
     final AsyncValue<void> profileState = ref.watch(profileControllerProvider);
     final bool isLoading = profileState.isLoading;
 
-    // Escuchamos errores del provider de perfil
     ref.listen<AsyncValue<void>>(profileControllerProvider, (_, next) {
       next.whenOrNull(
         error: (error, _) {
@@ -115,19 +135,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          // 🔥 RESPONSIVIDAD: Ajustar ancho máximo según el tamaño de pantalla
           final double maxWidth = constraints.maxWidth > 1200
-              ? 800  // Desktop grande
+              ? 800
               : constraints.maxWidth > 800
-                  ? 600  // Tablet
-                  : double.infinity;  // Móvil
+                  ? 600
+                  : double.infinity;
 
           return Center(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: maxWidth),
               child: SingleChildScrollView(
                 padding: EdgeInsets.all(
-                  // 🔥 RESPONSIVIDAD: Padding adaptativo
                   constraints.maxWidth > 600 ? 32.0 : 16.0,
                 ),
                 child: Form(
@@ -135,7 +153,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // --- SECCIÓN FOTO DE PERFIL ---
                       Center(
                         child: Stack(
                           alignment: Alignment.bottomRight,
@@ -143,10 +160,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             CircleAvatar(
                               radius: 60,
                               backgroundColor: AppColors.primaryContainer,
-                              backgroundImage: user?.profilePictureUrl != null && user!.profilePictureUrl!.isNotEmpty
-                                  ? NetworkImage(user.profilePictureUrl!)
-                                  : null,
-                              child: user?.profilePictureUrl == null || user!.profilePictureUrl!.isEmpty
+                              backgroundImage: _selectedImage != null
+                                  ? (kIsWeb
+                                      ? MemoryImage(_webImage!)
+                                      : FileImage(File(_selectedImage!.path)) as ImageProvider)
+                                  : (user?.profilePictureUrl != null && user!.profilePictureUrl!.isNotEmpty
+                                      ? NetworkImage(user.profilePictureUrl!)
+                                      : null),
+                              child: (_selectedImage == null && (user?.profilePictureUrl == null || user!.profilePictureUrl!.isEmpty))
                                   ? Text(
                                       user?.name?.isNotEmpty == true ? user!.name![0].toUpperCase() : 'U',
                                       style: const TextStyle(fontSize: 40, color: AppColors.primary, fontWeight: FontWeight.bold),
@@ -154,18 +175,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                   : null,
                             ),
                             FloatingActionButton.small(
-                              onPressed: isLoading ? null : _pickAndUploadImage,
+                              onPressed: isLoading ? null : _pickImage,
                               backgroundColor: AppColors.primary,
-                              child: isLoading 
-                                ? const CircularProgressIndicator(color: AppColors.onPrimary, strokeWidth: 2)
-                                : const Icon(Icons.camera_alt, color: AppColors.onPrimary),
+                              child: const Icon(Icons.camera_alt, color: AppColors.onPrimary),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
 
-                      // 🔥 ETIQUETA (BADGE) DEL ROL DEL USUARIO
                       Center(
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -194,13 +212,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // --- SECCIÓN FORMULARIO ---
                       AppTextField(
                         controller: _nameController,
                         label: 'Nombre completo',
                         prefixIcon: Icons.person_outline,
                         validator: (String? value) {
                           if (value == null || value.trim().isEmpty) return 'El nombre es obligatorio';
+                          if (value.trim().length < 3) return 'Ingresa un nombre válido';
                           return null;
                         },
                       ),
@@ -211,6 +229,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         label: 'Teléfono',
                         prefixIcon: Icons.phone_outlined,
                         hintText: '+51 999 888 777',
+                        keyboardType: TextInputType.phone,
                       ),
                       const SizedBox(height: 16),
 
@@ -218,7 +237,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         controller: _addressController,
                         label: 'Dirección',
                         prefixIcon: Icons.location_on_outlined,
-                        hintText: 'Ciudad, Distrito',
+                        hintText: 'Ciudad, Distrito, Calle...',
+                        validator: (String? value) {
+                          if (value != null && value.trim().isNotEmpty) {
+                            if (value.trim().length < 5) return 'Ingresa una dirección más descriptiva';
+                            // Evitar direcciones que solo sean números o caracteres basura
+                            if (RegExp(r'^[0-9]+$').hasMatch(value.trim())) return 'Ingresa una dirección válida';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -227,10 +254,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         label: 'Biografía / Sobre mí',
                         prefixIcon: Icons.info_outline,
                         hintText: 'Cuéntanos sobre tu experiencia profesional...',
+                        maxLines: 3,
                       ),
                       const SizedBox(height: 32),
 
-                      // --- BOTÓN GUARDAR ---
                       PrimaryButton(
                         label: 'Guardar Cambios',
                         icon: Icons.save_outlined,
@@ -238,7 +265,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onPressed: isLoading ? null : _saveProfile,
                       ),
 
-                      // 📏 ESPACIADO OPTIMIZADO Y LÍNEA FINA CONTIGUA
                       const SizedBox(height: 12),
 
                       OutlinedButton.icon(
@@ -334,7 +360,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const Divider(height: 1, color: Colors.black12),
                       const SizedBox(height: 16),
 
-                      // 🔥 BOTÓN CERRAR SESIÓN
                       OutlinedButton.icon(
                         onPressed: () {
                           ref.read(authControllerProvider.notifier).logout();

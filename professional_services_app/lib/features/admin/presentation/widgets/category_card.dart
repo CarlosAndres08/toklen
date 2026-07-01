@@ -20,7 +20,7 @@ class CategoryCard extends StatelessWidget {
     final name = (category['name'] ?? category['nombre'] ?? '').toString();
     final desc =
         (category['description'] ?? category['descripcion'] ?? '').toString();
-    final imageUrl = (category['image'] ?? category['imagen'] ?? '').toString();
+    final imageUrl = (category['image_url'] ?? category['image'] ?? category['imagen'] ?? '').toString();
     final isActive = category['is_active'] != false;
 
     return Card(

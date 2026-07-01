@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../providers/category_management_provider.dart';
+import '../../../categories/presentation/providers/category_provider.dart' as user_cat;
 import '../widgets/category_card.dart';
 
 class AdminCategoriesScreen extends ConsumerStatefulWidget {
@@ -192,7 +193,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
     final slugController =
         TextEditingController(text: categoryMap?['slug']?.toString() ?? '');
     String? existingImage =
-        categoryMap?['image']?.toString() ?? categoryMap?['imagen']?.toString();
+        categoryMap?['image_url']?.toString() ?? categoryMap?['image']?.toString() ?? categoryMap?['imagen']?.toString();
     String? newImageUrl;
     bool isUploading = false;
     final isNew = categoryMap == null;
@@ -317,7 +318,9 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                   data['slug'] = slugController.text.trim();
                 }
                 if (newImageUrl != null) {
-                  data['image'] = newImageUrl;
+                  data['image_url'] = newImageUrl;
+                } else if (existingImage != null) {
+                  data['image_url'] = existingImage;
                 }
 
                 final messenger = ScaffoldMessenger.of(context);
@@ -332,15 +335,6 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                   ok = await ref
                       .read(categoryManagementControllerProvider)
                       .updateCategory(categoryMap['id'].toString(), data);
-
-                  if (ok && newImageUrl != null) {
-                    if (mounted) {
-                      await ref
-                          .read(categoryManagementControllerProvider)
-                          .uploadCategoryImage(
-                              categoryMap['id'].toString(), newImageUrl!);
-                    }
-                  }
                 }
 
                 if (!mounted) return;
@@ -349,6 +343,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
 
                 if (ok) {
                   ref.invalidate(categoryListProvider);
+                  ref.invalidate(user_cat.categoryListProvider);
                   messenger.showSnackBar(
                     SnackBar(
                       content: Text(isNew
@@ -409,6 +404,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
               navigator.pop();
               if (ok) {
                 ref.invalidate(categoryListProvider);
+                ref.invalidate(user_cat.categoryListProvider);
                 messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Categoría eliminada'),

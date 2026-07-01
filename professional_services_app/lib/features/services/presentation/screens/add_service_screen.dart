@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../categories/presentation/providers/category_provider.dart';
 import '../../data/models/service_model.dart';
 import '../providers/service_provider.dart';
@@ -107,6 +108,9 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
     final bool isLoading = createStatus.isLoading || uploadStatus.isLoading;
     final categoriesAsync = ref.watch(categoryListProvider);
 
+    final authState = ref.watch(authControllerProvider).value;
+    final isVerified = authState?.user?.isVerified ?? false;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -122,6 +126,29 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!isVerified) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Tu cuenta aún no está verificada. Puedes publicar servicios, pero aparecerán con menor prioridad hasta que un administrador valide tu perfil.',
+                          style: TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               const Text(
                 'Detalles de tu servicio',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),

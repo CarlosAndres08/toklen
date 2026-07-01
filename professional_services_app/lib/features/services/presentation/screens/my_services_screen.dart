@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../data/models/service_model.dart';
 import '../providers/service_provider.dart';
 
 class MyServicesScreen extends ConsumerWidget {
@@ -17,6 +18,9 @@ class MyServicesScreen extends ConsumerWidget {
     final isAvailable = user?.isAvailable ?? true;
     final servicesAsync = ref.watch(serviceListProvider);
     final toggleAsync = ref.watch(availabilityToggleControllerProvider);
+
+    // Escuchar el estado de actualización para mostrar feedback
+    final updateState = ref.watch(updateServiceControllerProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -44,7 +48,6 @@ class MyServicesScreen extends ConsumerWidget {
           ),
         ],
       ),
-      // Botón flotante para crear más servicios rápido
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/services/create'),
         backgroundColor: AppColors.primary,
@@ -55,7 +58,6 @@ class MyServicesScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (error, _) => Center(child: Text('Error: $error')),
         data: (allServices) {
-          // 🔥 FILTRO MAGNÍFICO: Solo mostramos los servicios de ESTE proveedor
           final myServices = allServices.where((s) => s.provider?.id == currentUserId).toList();
 
           if (myServices.isEmpty) {
@@ -73,7 +75,6 @@ class MyServicesScreen extends ConsumerWidget {
             );
           }
 
-          // Lista de los servicios del proveedor
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: myServices.length,
@@ -87,7 +88,6 @@ class MyServicesScreen extends ConsumerWidget {
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
                     children: [
-                      // 1. Imagen miniatura
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: service.images.isNotEmpty
@@ -96,7 +96,6 @@ class MyServicesScreen extends ConsumerWidget {
                       ),
                       const SizedBox(width: 12),
                       
-                      // 2. Información
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,7 +104,6 @@ class MyServicesScreen extends ConsumerWidget {
                             const SizedBox(height: 4),
                             Text('S/ ${service.price.toStringAsFixed(2)}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w900)),
                             const SizedBox(height: 4),
-                            // Etiqueta visual de estado
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
@@ -121,15 +119,27 @@ class MyServicesScreen extends ConsumerWidget {
                         ),
                       ),
                       
-                      // 3. Controles (Switch y Editar)
                       Column(
                         children: [
                           Switch(
                             value: isActive,
                             activeThumbColor: AppColors.primary,
-                            onChanged: (value) {
-                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cambiando estado a ${value ? "Activo" : "Inactivo"}...')));
-                            },
+                            onChanged: updateState.isLoading
+                              ? null
+                              : (value) async {
+                                  final success = await ref.read(updateServiceControllerProvider.notifier).executeUpdate(
+                                    serviceId: service.id,
+                                    request: ServiceUpdateRequest(isActive: value),
+                                  );
+                                  if (success && context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Servicio ${value ? "activado" : "desactivado"} correctamente'),
+                                        duration: const Duration(seconds: 1),
+                                      )
+                                    );
+                                  }
+                                },
                           ),
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, color: AppColors.textSecondary),
