@@ -107,7 +107,7 @@ class AdminSettingsScreen extends ConsumerWidget {
                 child: CircularProgressIndicator(),
               )),
             ),
-            error: (_, _) => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
 
           const SizedBox(height: 24),

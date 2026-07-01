@@ -152,7 +152,7 @@ class AdminSidebar extends ConsumerWidget {
                 ],
               ),
             ),
-            error: (_, _) => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
           const SizedBox(height: 8),
           Expanded(

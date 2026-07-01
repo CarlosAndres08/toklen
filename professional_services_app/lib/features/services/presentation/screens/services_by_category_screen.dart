@@ -144,7 +144,10 @@ class _ServicesByCategoryScreenState
                   itemCount: services.length,
                   itemBuilder: (context, index) {
                     final service = services[index];
-                    return ServiceCard(service: service);
+                    return ServiceCard(
+                      service: service,
+                      onTap: () => context.push('/services/detail', extra: service),
+                    );
                   },
                 );
               },

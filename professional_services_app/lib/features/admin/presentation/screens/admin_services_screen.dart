@@ -420,7 +420,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                       child: Center(
                           child:
                               CircularProgressIndicator(strokeWidth: 2))),
-                  error: (_, _) => const Text('Error al cargar categorías'),
+                  error: (_, __) => const Text('Error al cargar categorías'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(

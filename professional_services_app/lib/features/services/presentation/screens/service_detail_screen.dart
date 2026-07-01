@@ -240,7 +240,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                             child: SkeletonLoader(width: double.infinity, height: 100, borderRadius: 16),
                           )),
                         ),
-                        error: (_, _) => const Text('No se pudieron cargar las reseñas.', style: TextStyle(color: AppColors.textSecondary)),
+                        error: (_, __) => const Text('No se pudieron cargar las reseñas.', style: TextStyle(color: AppColors.textSecondary)),
                         data: (reviews) {
                           if (reviews.isEmpty) {
                             return Container(

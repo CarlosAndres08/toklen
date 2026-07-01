@@ -77,7 +77,7 @@ class MyServicesScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: myServices.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 12),
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final service = myServices[index];
               final bool isActive = service.isActive;
