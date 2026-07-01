@@ -485,6 +485,16 @@ async def approve_verification(
     if badge not in user.badges:
         user.badges.append(badge)
 
+    # Notificar al proveedor (alias legacy)
+    notif_repo = NotificationRepository(db)
+    await notif_repo.create(
+        Notification(
+            user_id=user_id,
+            title="¡Cuenta Verificada!",
+            content="Tu identidad ha sido verificada exitosamente. Ya tienes la insignia de confianza."
+        )
+    )
+
     return {"message": f"Usuario {user.nombre} verificado exitosamente", "is_verified": True}
 
 
@@ -499,6 +509,16 @@ async def reject_verification(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Notificar al proveedor (alias legacy)
+    notif_repo = NotificationRepository(db)
+    await notif_repo.create(
+        Notification(
+            user_id=user_id,
+            title="Verificación Rechazada",
+            content=f"Tu solicitud de verificación fue rechazada: {body.reason}"
+        )
+    )
 
     return {
         "message": f"Verificación de {user.nombre} rechazada: {body.reason}",

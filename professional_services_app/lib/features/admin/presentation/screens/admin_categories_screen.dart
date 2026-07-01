@@ -317,6 +317,8 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                 if (slugController.text.trim().isNotEmpty) {
                   data['slug'] = slugController.text.trim();
                 }
+
+                // 🔥 INCIDENCIA 3: Usar image_url para el backend
                 if (newImageUrl != null) {
                   data['image_url'] = newImageUrl;
                 } else if (existingImage != null) {
@@ -342,8 +344,10 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                 navigator.pop();
 
                 if (ok) {
+                  // 🔥 INCIDENCIA 5: Invalidar caché de catálogo para proveedores/clientes
                   ref.invalidate(categoryListProvider);
                   ref.invalidate(user_cat.categoryListProvider);
+
                   messenger.showSnackBar(
                     SnackBar(
                       content: Text(isNew

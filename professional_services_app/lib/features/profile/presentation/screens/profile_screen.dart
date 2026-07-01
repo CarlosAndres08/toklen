@@ -82,10 +82,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           .read(profileControllerProvider.notifier)
           .uploadPicture(fileBytes: bytes, fileName: _selectedImage!.name);
 
-      if (!imageSuccess) {
-        // El error ya lo maneja el listener del provider mostrando un snackbar
-        return;
-      }
+      if (!imageSuccess) return;
     }
 
     // 2. Guardamos los demás datos
@@ -177,7 +174,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             FloatingActionButton.small(
                               onPressed: isLoading ? null : _pickImage,
                               backgroundColor: AppColors.primary,
-                              child: const Icon(Icons.camera_alt, color: AppColors.onPrimary),
+                              child: isLoading
+                                ? const CircularProgressIndicator(color: AppColors.onPrimary, strokeWidth: 2)
+                                : const Icon(Icons.camera_alt, color: AppColors.onPrimary),
                             ),
                           ],
                         ),
@@ -218,7 +217,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         prefixIcon: Icons.person_outline,
                         validator: (String? value) {
                           if (value == null || value.trim().isEmpty) return 'El nombre es obligatorio';
-                          if (value.trim().length < 3) return 'Ingresa un nombre válido';
+                          if (value.trim().length < 3) return 'Nombre demasiado corto';
                           return null;
                         },
                       ),
@@ -237,12 +236,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         controller: _addressController,
                         label: 'Dirección',
                         prefixIcon: Icons.location_on_outlined,
-                        hintText: 'Ciudad, Distrito, Calle...',
+                        hintText: 'Ej. Av. Salaverry 123, Chiclayo',
                         validator: (String? value) {
                           if (value != null && value.trim().isNotEmpty) {
-                            if (value.trim().length < 5) return 'Ingresa una dirección más descriptiva';
-                            // Evitar direcciones que solo sean números o caracteres basura
-                            if (RegExp(r'^[0-9]+$').hasMatch(value.trim())) return 'Ingresa una dirección válida';
+                            if (value.trim().length < 5) return 'Dirección demasiado corta';
+                            if (RegExp(r'^[0-9\W]+$').hasMatch(value.trim())) return 'Ingresa una dirección válida';
                           }
                           return null;
                         },
