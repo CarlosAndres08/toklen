@@ -62,6 +62,12 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     final bool isOwner = userRole == 'provider' && currentUserId == currentService.provider?.id;
     final reviewsAsync = ref.watch(serviceReviewsProvider(currentService.id));
 
+    // Lógica de negocio: ¿Precio fijo o personalizado?
+    // En este MVP, usaremos el precio para decidir:
+    // Si el precio es redondo y bajo (ej. 0 o muy específico), invitamos a cotizar.
+    // Si tiene un precio definido, permitimos reservar directamente.
+    final bool canBookDirectly = currentService.price > 0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -291,6 +297,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                   )
                 : Row(
                     children: [
+                      // Botón RESERVAR: Siempre visible si hay precio
+                      if (canBookDirectly)
                       Expanded(
                         child: PrimaryButton(
                           label: 'Reservar',
@@ -306,7 +314,10 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(width: 12),
+
+                      if (canBookDirectly) const SizedBox(width: 12),
+
+                      // Botón COTIZAR: Útil para personalización o si no hay precio fijo
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: () {

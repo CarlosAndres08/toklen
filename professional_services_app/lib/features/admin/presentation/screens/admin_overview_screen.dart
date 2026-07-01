@@ -37,7 +37,7 @@ class AdminOverviewScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Panel de Administración',
+                'Dashboard Administrativo',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -47,7 +47,7 @@ class AdminOverviewScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Resumen general del sistema TOKLEN',
+                'Visión general y métricas clave de TOKLEN',
                 style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 32),
@@ -61,7 +61,13 @@ class AdminOverviewScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     flex: 2,
-                    child: _buildChartCard('Actividad del Sistema', s),
+                    child: Column(
+                      children: [
+                        _buildChartCard('Actividad del Sistema', s),
+                        const SizedBox(height: 24),
+                        _buildActivityCard(s),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 24),
                   Expanded(
@@ -81,33 +87,29 @@ class AdminOverviewScreen extends ConsumerWidget {
       final isWide = constraints.maxWidth > 900;
       final cardWidth = isWide ? (constraints.maxWidth - 48) / 4 : constraints.maxWidth;
 
-      return Column(
+      return Wrap(
+        spacing: 16,
+        runSpacing: 16,
         children: [
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Total Usuarios', '${s.totalUsers}',
-                    Icons.people_rounded, AppColors.primary, '${s.newUsers7d} nuevos (7d)'),
-              ),
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Proveedores', '${s.totalProviders}',
-                    Icons.work_rounded, Colors.blue, '${s.verifiedProviders} verificados'),
-              ),
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Servicios', '${s.totalServices}',
-                    Icons.build_circle_rounded, AppColors.info, 'Publicados'),
-              ),
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Reservas', '${s.totalBookings}',
-                    Icons.calendar_today_rounded, AppColors.warning, 'Totales'),
-              ),
-            ],
+          SizedBox(
+            width: cardWidth.clamp(180, 300),
+            child: _statCard('Total Usuarios', '${s.totalUsers}',
+                Icons.people_rounded, AppColors.primary, '${s.newUsers7d} nuevos (7d)'),
+          ),
+          SizedBox(
+            width: cardWidth.clamp(180, 300),
+            child: _statCard('Proveedores', '${s.totalProviders}',
+                Icons.work_rounded, Colors.blue, '${s.verifiedProviders} verificados'),
+          ),
+          SizedBox(
+            width: cardWidth.clamp(180, 300),
+            child: _statCard('Servicios Activos', '${s.totalServices}',
+                Icons.build_circle_rounded, AppColors.success, 'Publicados'),
+          ),
+          SizedBox(
+            width: cardWidth.clamp(180, 300),
+            child: _statCard('Ingresos Est.', 'S/ ${s.totalRevenue.toStringAsFixed(0)}',
+                Icons.monetization_on_rounded, AppColors.warning, 'Completados'),
           ),
         ],
       );
@@ -116,6 +118,8 @@ class AdminOverviewScreen extends ConsumerWidget {
 
   Widget _statCard(String label, String value, IconData icon, Color color, String sub) {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -138,7 +142,7 @@ class AdminOverviewScreen extends ConsumerWidget {
             Text(
               value,
               style: const TextStyle(
-                fontSize: 28,
+                fontSize: 24,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
@@ -147,7 +151,7 @@ class AdminOverviewScreen extends ConsumerWidget {
             Text(
               label,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
@@ -157,7 +161,7 @@ class AdminOverviewScreen extends ConsumerWidget {
               Text(
                 sub,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                   color: color,
                 ),
@@ -171,6 +175,8 @@ class AdminOverviewScreen extends ConsumerWidget {
 
   Widget _buildChartCard(String title, dynamic s) {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -179,11 +185,11 @@ class AdminOverviewScreen extends ConsumerWidget {
             Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 32),
             SizedBox(
-              height: 300,
+              height: 250,
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  maxY: (s.totalUsers > s.totalServices ? s.totalUsers : s.totalServices).toDouble() * 1.2,
+                  maxY: (s.totalUsers > s.totalServices ? s.totalUsers : s.totalServices).toDouble() * 1.5,
                   barTouchData: BarTouchData(enabled: true),
                   titlesData: FlTitlesData(
                     show: true,
@@ -191,10 +197,11 @@ class AdminOverviewScreen extends ConsumerWidget {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          const titles = ['Usuarios', 'Proveedores', 'Servicios', 'Reservas'];
+                          const titles = ['Usuarios', 'Provs', 'Servicios', 'Reservas'];
+                          if (value < 0 || value >= titles.length) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: Text(titles[value.toInt()], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            child: Text(titles[value.toInt()], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
                           );
                         },
                       ),
@@ -208,7 +215,7 @@ class AdminOverviewScreen extends ConsumerWidget {
                   barGroups: [
                     BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: s.totalUsers.toDouble(), color: AppColors.primary, width: 22, borderRadius: BorderRadius.circular(4))]),
                     BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: s.totalProviders.toDouble(), color: Colors.blue, width: 22, borderRadius: BorderRadius.circular(4))]),
-                    BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: s.totalServices.toDouble(), color: AppColors.info, width: 22, borderRadius: BorderRadius.circular(4))]),
+                    BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: s.totalServices.toDouble(), color: AppColors.success, width: 22, borderRadius: BorderRadius.circular(4))]),
                     BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: s.totalBookings.toDouble(), color: AppColors.warning, width: 22, borderRadius: BorderRadius.circular(4))]),
                   ],
                 ),
@@ -220,43 +227,74 @@ class AdminOverviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTopServicesList(List<dynamic> topServices) {
+  Widget _buildActivityCard(dynamic s) {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Top Servicios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const Text('Métricas de Rendimiento', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 24),
+            _activityRow('Tasa de Conversión', '${s.conversionRate.toStringAsFixed(1)}%', AppColors.primary),
+            const Divider(height: 32),
+            _activityRow('Usuarios Suspendidos', '${s.suspendedUsers}', AppColors.error),
+            const Divider(height: 32),
+            _activityRow('Solicitudes Pendientes', '${s.totalBookings}', AppColors.warning),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _activityRow(String label, String value, Color color) {
+    return Row(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+        const Spacer(),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+      ],
+    );
+  }
+
+  Widget _buildTopServicesList(List<dynamic> topServices) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Mejores Valorados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 24),
             if (topServices.isEmpty)
               const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Sin datos disponibles', style: TextStyle(color: AppColors.textTertiary))))
             else
               ...topServices.map(
                 (service) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: 20),
                   child: Row(
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: Colors.amber.withValues(alpha: 0.1),
-                        child: const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                      Container(
+                        width: 44, height: 44,
+                        decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.star_rounded, color: Colors.amber, size: 24),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(service.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(service.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
                             Text(service.providerName, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text('${service.averageRating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber)),
-                      ),
+                      const SizedBox(width: 8),
+                      Text('${service.averageRating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Colors.amber)),
                     ],
                   ),
                 ),
