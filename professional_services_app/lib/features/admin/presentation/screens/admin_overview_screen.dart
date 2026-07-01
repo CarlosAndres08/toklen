@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../providers/admin_provider.dart';
@@ -36,81 +37,38 @@ class AdminOverviewScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Panel de Administraci\u00f3n',
+                'Panel de Administración',
                 style: TextStyle(
                   fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                   color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               const Text(
                 'Resumen general del sistema TOKLEN',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 32),
+
               _buildStatsRow(context, s),
+
               const SizedBox(height: 32),
-              const Text(
-                'Top Servicios',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _buildChartCard('Actividad del Sistema', s),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: _buildTopServicesList(data.topServices),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              if (data.topServices.isEmpty)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: Text(
-                        'No hay servicios con suficientes rese\u00f1as',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                )
-              else
-                ...data.topServices.map(
-                  (service) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.amber.withValues(alpha: 0.15),
-                        child: const Icon(Icons.star, color: Colors.amber),
-                      ),
-                      title: Text(service.title,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600)),
-                      subtitle: Text(service.providerName),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${service.averageRating.toStringAsFixed(1)} \u2605',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Colors.amber,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           );
         },
@@ -132,51 +90,22 @@ class AdminOverviewScreen extends ConsumerWidget {
               SizedBox(
                 width: cardWidth.clamp(180, 300),
                 child: _statCard('Total Usuarios', '${s.totalUsers}',
-                    Icons.people, AppColors.primary, '${s.newUsers7d} nuevos (7d)'),
+                    Icons.people_rounded, AppColors.primary, '${s.newUsers7d} nuevos (7d)'),
               ),
               SizedBox(
                 width: cardWidth.clamp(180, 300),
                 child: _statCard('Proveedores', '${s.totalProviders}',
-                    Icons.work, Colors.blue, '${s.verifiedProviders} verificados'),
+                    Icons.work_rounded, Colors.blue, '${s.verifiedProviders} verificados'),
               ),
               SizedBox(
                 width: cardWidth.clamp(180, 300),
                 child: _statCard('Servicios', '${s.totalServices}',
-                    Icons.build, AppColors.info, 'Publicados'),
+                    Icons.build_circle_rounded, AppColors.info, 'Publicados'),
               ),
               SizedBox(
                 width: cardWidth.clamp(180, 300),
                 child: _statCard('Reservas', '${s.totalBookings}',
-                    Icons.calendar_today, AppColors.warning, 'Totales'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: [
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Ingresos Totales',
-                    '\$${s.totalRevenue.toStringAsFixed(0)}',
-                    Icons.attach_money, AppColors.success, 'Completados'),
-              ),
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Tasa de Conversi\u00f3n',
-                    '${s.conversionRate.toStringAsFixed(1)}%',
-                    Icons.trending_up, AppColors.secondary, 'Reservas completadas'),
-              ),
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Nuevos (7d)', '${s.newUsers7d}',
-                    Icons.person_add, AppColors.info, '\u00daltimos 7 d\u00edas'),
-              ),
-              SizedBox(
-                width: cardWidth.clamp(180, 300),
-                child: _statCard('Suspendidos', '${s.suspendedUsers}',
-                    Icons.block, Colors.red, 'Usuarios'),
+                    Icons.calendar_today_rounded, AppColors.warning, 'Totales'),
               ),
             ],
           ),
@@ -185,59 +114,153 @@ class AdminOverviewScreen extends ConsumerWidget {
     });
   }
 
-  Widget _statCard(
-      String label, String value, IconData icon, Color color, String sub) {
+  Widget _statCard(String label, String value, IconData icon, Color color, String sub) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: AppColors.border),
-      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  child: Icon(icon, color: color, size: 24),
                 ),
                 const Spacer(),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               value,
               style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               label,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
               ),
             ),
             if (sub.isNotEmpty) ...[
-              const SizedBox(height: 2),
+              const SizedBox(height: 8),
               Text(
                 sub,
                 style: TextStyle(
-                  fontSize: 11,
-                  color: color.withValues(alpha: 0.8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: color,
                 ),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChartCard(String title, dynamic s) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 32),
+            SizedBox(
+              height: 300,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: (s.totalUsers > s.totalServices ? s.totalUsers : s.totalServices).toDouble() * 1.2,
+                  barTouchData: BarTouchData(enabled: true),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          const titles = ['Usuarios', 'Proveedores', 'Servicios', 'Reservas'];
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(titles[value.toInt()], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  barGroups: [
+                    BarChartGroupData(x: 0, barRods: [BarChartRodData(toY: s.totalUsers.toDouble(), color: AppColors.primary, width: 22, borderRadius: BorderRadius.circular(4))]),
+                    BarChartGroupData(x: 1, barRods: [BarChartRodData(toY: s.totalProviders.toDouble(), color: Colors.blue, width: 22, borderRadius: BorderRadius.circular(4))]),
+                    BarChartGroupData(x: 2, barRods: [BarChartRodData(toY: s.totalServices.toDouble(), color: AppColors.info, width: 22, borderRadius: BorderRadius.circular(4))]),
+                    BarChartGroupData(x: 3, barRods: [BarChartRodData(toY: s.totalBookings.toDouble(), color: AppColors.warning, width: 22, borderRadius: BorderRadius.circular(4))]),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopServicesList(List<dynamic> topServices) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Top Servicios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 24),
+            if (topServices.isEmpty)
+              const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('Sin datos disponibles', style: TextStyle(color: AppColors.textTertiary))))
+            else
+              ...topServices.map(
+                (service) => Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: Colors.amber.withValues(alpha: 0.1),
+                        child: const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(service.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(service.providerName, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                        child: Text('${service.averageRating.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

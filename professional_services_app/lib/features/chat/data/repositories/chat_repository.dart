@@ -1,19 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import '../../../../core/config/app_config.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_exception.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../models/chat_models.dart';
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   final repo = ChatRepository(
-    client: ref.watch(httpClientProvider),
-    baseUrl: AppConfig.apiBaseUrl,
+    client: ref.watch(dioProvider),
   );
   ref.onDispose(() => repo.dispose());
   return repo;
@@ -21,102 +19,60 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 
 class ChatRepository {
   ChatRepository({
-    required http.Client client,
-    required String baseUrl,
-  })  : _client = client,
-        _baseUrl = baseUrl;
+    required Dio client,
+  })  : _client = client;
 
-  final http.Client _client;
-  final String _baseUrl;
+  final Dio _client;
   WebSocketChannel? _wsChannel;
   StreamController<ChatMessageModel>? _wsController;
   bool _wsConnected = false;
 
-  Future<List<ChatInboxItemModel>> getInbox(String token) async {
-    final uri = Uri.parse('$_baseUrl/api/v1/chat/inbox');
-    final response = await _client.get(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final body = response.body;
-      if (body.isEmpty) return [];
-      final decoded = jsonDecode(body) as List<dynamic>;
-      return decoded
-          .whereType<Map<String, dynamic>>()
-          .map(ChatInboxItemModel.fromJson)
-          .toList();
+  Future<List<ChatInboxItemModel>> getInbox() async {
+    try {
+      final response = await _client.get('/api/v1/chat/inbox');
+      final List<dynamic> data = response.data as List<dynamic>;
+      return data.map((json) => ChatInboxItemModel.fromJson(json as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw ApiException('Error al cargar mensajes.', statusCode: e.response?.statusCode);
     }
-
-    throw ApiException('Error al cargar mensajes.',
-        statusCode: response.statusCode);
   }
 
-  Future<List<ChatMessageModel>> getHistory(
-      String token, String contactId) async {
-    final uri = Uri.parse('$_baseUrl/api/v1/chat/history/$contactId');
-    final response = await _client.get(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final body = response.body;
-      if (body.isEmpty) return [];
-      final decoded = jsonDecode(body) as List<dynamic>;
-      return decoded
-          .whereType<Map<String, dynamic>>()
-          .map(ChatMessageModel.fromJson)
-          .toList();
+  Future<List<ChatMessageModel>> getHistory(String contactId) async {
+    try {
+      final response = await _client.get('/api/v1/chat/history/$contactId');
+      final List<dynamic> data = response.data as List<dynamic>;
+      return data.map((json) => ChatMessageModel.fromJson(json as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw ApiException('Error al cargar historial.', statusCode: e.response?.statusCode);
     }
-
-    throw ApiException('Error al cargar historial.',
-        statusCode: response.statusCode);
   }
 
-  Future<ChatMessageModel> sendMessage(
-      String token, ChatMessageCreateRequest req) async {
-    final uri = Uri.parse('$_baseUrl/api/v1/chat/send');
-    final response = await _client.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(req.toJson()),
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return ChatMessageModel.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>);
+  Future<ChatMessageModel> sendMessage(ChatMessageCreateRequest req) async {
+    try {
+      final response = await _client.post(
+        '/api/v1/chat/send',
+        data: req.toJson(),
+      );
+      return ChatMessageModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      final detail = e.response?.data is Map ? e.response?.data['detail']?.toString() : null;
+      throw ApiException(detail ?? 'Error al enviar mensaje.', statusCode: e.response?.statusCode);
     }
-
-    final data = response.body.isNotEmpty ? jsonDecode(response.body) : null;
-    final detail =
-        data is Map ? data['detail']?.toString() : null;
-    throw ApiException(detail ?? 'Error al enviar mensaje.',
-        statusCode: response.statusCode);
   }
 
-  Stream<ChatMessageModel> connectWebSocket(
-      String userId, String token) {
+  Stream<ChatMessageModel> connectWebSocket(String userId, String token) {
     if (_wsConnected && _wsController != null) {
       return _wsController!.stream;
     }
 
     _wsController?.close();
     _wsController = StreamController<ChatMessageModel>.broadcast();
-    final wsBase = _baseUrl.replaceFirst('http', 'ws');
-    final uri = Uri.parse('$wsBase/api/v1/chat/ws/$userId')
-        .replace(queryParameters: {'token': token});
+
+    // Obtenemos la base URL desde las opciones de Dio y cambiamos el esquema
+    final baseUrl = _client.options.baseUrl;
+    final wsBase = baseUrl.replaceFirst('http', 'ws');
+    final uri = Uri.parse('$wsBase/api/v1/chat/ws/$userId').replace(queryParameters: {'token': token});
+
     _wsChannel = WebSocketChannel.connect(uri);
     _wsConnected = true;
 
@@ -143,42 +99,22 @@ class ChatRepository {
     return _wsController!.stream;
   }
 
-  Future<List<NotificationModel>> getNotifications(String token) async {
-    final uri = Uri.parse('$_baseUrl/api/v1/chat/notifications');
-    final response = await _client.get(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final body = response.body;
-      if (body.isEmpty) return [];
-      final decoded = jsonDecode(body) as List<dynamic>;
-      return decoded
-          .whereType<Map<String, dynamic>>()
-          .map(NotificationModel.fromJson)
-          .toList();
+  Future<List<NotificationModel>> getNotifications() async {
+    try {
+      final response = await _client.get('/api/v1/chat/notifications');
+      final List<dynamic> data = response.data as List<dynamic>;
+      return data.map((json) => NotificationModel.fromJson(json as Map<String, dynamic>)).toList();
+    } on DioException catch (e) {
+      throw ApiException('Error al cargar notificaciones.', statusCode: e.response?.statusCode);
     }
-    throw ApiException('Error al cargar notificaciones.',
-        statusCode: response.statusCode);
   }
 
-  Future<void> markNotificationAsRead(
-      String token, String notificationId) async {
-    final uri =
-        Uri.parse('$_baseUrl/api/v1/chat/notifications/$notificationId/read');
-    final response = await _client.patch(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
-    if (response.statusCode >= 200 && response.statusCode < 300) return;
-    throw ApiException('Error al marcar notificación.',
-        statusCode: response.statusCode);
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      await _client.patch('/api/v1/chat/notifications/$notificationId/read');
+    } on DioException catch (e) {
+      throw ApiException('Error al marcar notificación.', statusCode: e.response?.statusCode);
+    }
   }
 
   void disconnectWebSocket() {

@@ -6,17 +6,15 @@ import '../../data/repositories/chat_repository.dart';
 
 final inboxProvider = FutureProvider<List<ChatInboxItemModel>>((ref) {
   final authState = ref.watch(authControllerProvider);
-  final token = authState.value?.accessToken ?? '';
-  if (token.isEmpty) return [];
-  return ref.read(chatRepositoryProvider).getInbox(token);
+  if (!authState.value!.isAuthenticated) return [];
+  return ref.read(chatRepositoryProvider).getInbox();
 });
 
 final chatHistoryProvider =
     FutureProvider.family<List<ChatMessageModel>, String>((ref, contactId) {
   final authState = ref.watch(authControllerProvider);
-  final token = authState.value?.accessToken ?? '';
-  if (token.isEmpty) return [];
-  return ref.read(chatRepositoryProvider).getHistory(token, contactId);
+  if (!authState.value!.isAuthenticated) return [];
+  return ref.read(chatRepositoryProvider).getHistory(contactId);
 });
 
 final loadInboxProvider = Provider<void Function()>((ref) {
@@ -25,9 +23,8 @@ final loadInboxProvider = Provider<void Function()>((ref) {
 
 final notificationsProvider = FutureProvider<List<NotificationModel>>((ref) {
   final authState = ref.watch(authControllerProvider);
-  final token = authState.value?.accessToken ?? '';
-  if (token.isEmpty) return [];
-  return ref.read(chatRepositoryProvider).getNotifications(token);
+  if (!authState.value!.isAuthenticated) return [];
+  return ref.read(chatRepositoryProvider).getNotifications();
 });
 
 class SendMessageState {
@@ -65,16 +62,12 @@ class SendMessageNotifier extends Notifier<SendMessageState> {
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final token =
-          ref.read(authControllerProvider).value?.accessToken ?? '';
-      if (token.isEmpty) throw Exception('No autenticado.');
       final req = ChatMessageCreateRequest(
         receiverId: receiverId,
         message: message,
         bookingId: bookingId,
       );
-      final msg =
-          await ref.read(chatRepositoryProvider).sendMessage(token, req);
+      final msg = await ref.read(chatRepositoryProvider).sendMessage(req);
       state = state.copyWith(isLoading: false, message: msg);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -103,7 +96,6 @@ final wsMessagesProvider =
     return const Stream.empty();
   }
   final stream = chatRepo.connectWebSocket(userId, token);
-  ref.onDispose(() {});
   return stream.where((msg) =>
       msg.senderId == contactId || msg.receiverId == contactId);
 });

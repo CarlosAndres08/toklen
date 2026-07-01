@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/provider_profile_model.dart';
 import '../../data/models/service_model.dart';
 import '../providers/service_provider.dart';
@@ -141,7 +140,7 @@ class _ProfileContent extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: profile.badges.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (_, i) {
                   final badge = profile.badges[i];
                   return Column(

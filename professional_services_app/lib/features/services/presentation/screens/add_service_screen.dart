@@ -113,7 +113,7 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
                 error: (err, stack) => Text('Error al cargar categorías: $err', style: const TextStyle(color: AppColors.error)),
                 data: (categories) {
                   return DropdownButtonFormField<String>(
-                    value: _selectedCategoryId,
+                    initialValue: _selectedCategoryId,
                     decoration: const InputDecoration(
                       labelText: 'Categoría',
                       border: OutlineInputBorder(),

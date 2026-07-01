@@ -1,15 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/config/app_config.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../data/models/review_model.dart';
 import '../../data/repositories/review_repository.dart';
 
 final Provider<ReviewRepository> reviewRepositoryProvider =
     Provider<ReviewRepository>((Ref ref) {
   return ReviewRepository(
-    client: ref.watch(httpClientProvider),
-    baseUrl: AppConfig.apiBaseUrl,
+    client: ref.watch(dioProvider),
   );
 });
 
@@ -33,10 +31,9 @@ class CreateReviewController extends AsyncNotifier<void> {
   Future<bool> executeCreate(ReviewCreateRequest request) async {
     state = const AsyncLoading();
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
       await ref
           .read(reviewRepositoryProvider)
-          .createReview(token: token, request: request);
+          .createReview(request: request);
       state = const AsyncData(null);
       return true;
     } catch (e, st) {

@@ -3,10 +3,10 @@ import 'badge_model.dart';
 class UserModel {
   const UserModel({
     this.id,
-    this.name,
+    this.nombre,
     this.email,
-    this.role,
-    this.createdAt,
+    this.rol,
+    this.fechaCreacion,
     this.phone,
     this.bio,
     this.address,
@@ -21,10 +21,10 @@ class UserModel {
   });
 
   final String? id;
-  final String? name;
+  final String? nombre;
   final String? email;
-  final String? role;
-  final DateTime? createdAt;
+  final String? rol;
+  final DateTime? fechaCreacion;
   final String? phone;
   final String? bio;
   final String? address;
@@ -37,16 +37,21 @@ class UserModel {
   final String? idDocumentUrl;
   final List<BadgeModel> badges;
 
+  // Alias para mantener compatibilidad con código existente si es necesario
+  String? get name => nombre;
+  String? get role => rol;
+  DateTime? get createdAt => fechaCreacion;
+
   factory UserModel.fromJson(Map<String, dynamic>? json) {
     final Map<String, dynamic> data = json ?? <String, dynamic>{};
     final Object? badgesValue = data['badges'];
 
     return UserModel(
       id: data['id']?.toString() ?? '',
-      name: (data['name'] ?? data['nombre'])?.toString() ?? '',
+      nombre: (data['nombre'] ?? data['name'])?.toString() ?? '',
       email: data['email']?.toString() ?? '',
-      role: (data['role'] ?? data['rol'])?.toString() ?? 'client',
-      createdAt: _parseDate(data['created_at'] ?? data['fecha_creacion']),
+      rol: (data['rol'] ?? data['role'])?.toString() ?? 'client',
+      fechaCreacion: _parseDate(data['fecha_creacion'] ?? data['created_at']),
       phone: data['phone']?.toString() ?? '',
       bio: data['bio']?.toString() ?? '',
       address: data['address']?.toString() ?? '',
@@ -68,8 +73,9 @@ class UserModel {
 
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
-      if (name != null) 'name': name,
-      if (email != null) 'email': email,
+      'nombre': nombre,
+      'email': email,
+      'rol': rol,
       if (phone != null) 'phone': phone,
       if (bio != null) 'bio': bio,
       if (address != null) 'address': address,

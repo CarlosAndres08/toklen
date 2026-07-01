@@ -33,10 +33,7 @@ class ScheduleFormNotifier extends Notifier<ScheduleFormState> {
   Future<bool> create(ScheduleCreateRequest req) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      if (token.isEmpty) throw Exception('No autenticado.');
-      final schedule =
-          await ref.read(scheduleRepositoryProvider).createSchedule(token, req);
+      final schedule = await ref.read(scheduleRepositoryProvider).createSchedule(req);
       state = state.copyWith(isLoading: false, schedule: schedule);
       ref.invalidate(myScheduleProvider);
       return true;
@@ -49,9 +46,7 @@ class ScheduleFormNotifier extends Notifier<ScheduleFormState> {
   Future<bool> delete(String scheduleId) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      if (token.isEmpty) throw Exception('No autenticado.');
-      await ref.read(scheduleRepositoryProvider).deleteSchedule(token, scheduleId);
+      await ref.read(scheduleRepositoryProvider).deleteSchedule(scheduleId);
       state = state.copyWith(isLoading: false);
       ref.invalidate(myScheduleProvider);
       return true;

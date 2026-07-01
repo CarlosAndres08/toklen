@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_text_field.dart';
@@ -113,7 +112,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
     );
 
     final BookingCreateRequest request = BookingCreateRequest(
-      serviceId: widget.service.id ?? '',
+      serviceId: widget.service.id,
       startTime: startTime,
       notes: _notesController.text.trim().isNotEmpty
           ? _notesController.text.trim()
@@ -338,7 +337,7 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.service.title ?? 'Servicio',
+                      widget.service.title,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -347,26 +346,24 @@ class _CreateBookingScreenState extends ConsumerState<CreateBookingScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (widget.service.price != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'S/ ${widget.service.price!.toStringAsFixed(0)}/hora',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.success,
-                        ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'S/ ${widget.service.price.toStringAsFixed(0)}/hora',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.success,
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          if (widget.service.description?.isNotEmpty == true) ...[
+          if (widget.service.description.isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(
-              widget.service.description!,
+              widget.service.description,
               style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,

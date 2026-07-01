@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/chat_models.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../providers/chat_provider.dart';
@@ -82,11 +81,9 @@ class _NotificationTile extends ConsumerWidget {
               : TextButton(
                   onPressed: () async {
                     try {
-                      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-                      if (token.isEmpty) return;
                       await ref
                           .read(chatRepositoryProvider)
-                          .markNotificationAsRead(token, notification.id);
+                          .markNotificationAsRead(notification.id);
                       ref.invalidate(notificationsProvider);
                       if (notification.senderId != null && context.mounted) {
                         final contactName = notification.title.startsWith('Nuevo mensaje de ')

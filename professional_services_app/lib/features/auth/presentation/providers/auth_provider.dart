@@ -1,19 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 
-import '../../../../core/config/app_config.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/storage/token_storage.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
-
-final Provider<http.Client> httpClientProvider = Provider<http.Client>((
-  Ref ref,
-) {
-  final http.Client client = http.Client();
-  ref.onDispose(client.close);
-  return client;
-});
 
 final Provider<TokenStorage> tokenStorageProvider = Provider<TokenStorage>(
   (Ref ref) => TokenStorage(),
@@ -22,8 +13,7 @@ final Provider<TokenStorage> tokenStorageProvider = Provider<TokenStorage>(
 final Provider<AuthRepository> authRepositoryProvider =
     Provider<AuthRepository>((Ref ref) {
       return AuthRepository(
-        client: ref.watch(httpClientProvider),
-        baseUrl: AppConfig.apiBaseUrl,
+        client: ref.watch(dioProvider),
         tokenStorage: ref.watch(tokenStorageProvider),
       );
     });

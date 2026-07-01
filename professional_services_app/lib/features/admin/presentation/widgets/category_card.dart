@@ -37,13 +37,13 @@ class CategoryCard extends StatelessWidget {
                   height: 140,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
+                  placeholder: (context, url) => Container(
                     height: 140,
                     color: AppColors.primary.withValues(alpha: 0.05),
                     child: const Center(
                         child: CircularProgressIndicator(strokeWidth: 2)),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (context, url, error) => Container(
                     height: 140,
                     color: AppColors.primary.withValues(alpha: 0.08),
                     child: Icon(Icons.category,

@@ -34,7 +34,7 @@ class MyServicesScreen extends ConsumerWidget {
                 Text(isAvailable ? 'Disponible' : 'Ocupado', style: TextStyle(fontSize: 12, color: isAvailable ? AppColors.success : Colors.grey)),
                 Switch(
                   value: isAvailable,
-                  activeColor: AppColors.success,
+                  activeThumbColor: AppColors.success,
                   onChanged: toggleAsync.isLoading
                       ? null
                       : (_) => ref.read(availabilityToggleControllerProvider.notifier).toggle(),
@@ -77,17 +77,12 @@ class MyServicesScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: myServices.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final service = myServices[index];
-              // Asumimos que tu modelo tiene un boolean isActive. Si no lo tiene, temporalmente simulamos que es true
-              // final bool isActive = service.isActive ?? true;
-              final bool isActive = true; // 🔥 Reemplaza con service.isActive si ya existe en tu modelo
+              final bool isActive = service.isActive;
 
               return Card(
-                color: AppColors.surface,
-                elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: Padding(
                   padding: const EdgeInsets.all(12.0),
                   child: Row(
@@ -131,9 +126,8 @@ class MyServicesScreen extends ConsumerWidget {
                         children: [
                           Switch(
                             value: isActive,
-                            activeColor: AppColors.primary,
+                            activeThumbColor: AppColors.primary,
                             onChanged: (value) {
-                              // 🔥 AQUÍ VA TU LÓGICA DE ACTIVAR/DESACTIVAR
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cambiando estado a ${value ? "Activo" : "Inactivo"}...')));
                             },
                           ),

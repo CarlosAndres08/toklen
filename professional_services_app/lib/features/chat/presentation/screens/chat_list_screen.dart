@@ -22,10 +22,10 @@ class ChatListScreen extends ConsumerWidget {
           Consumer(
             builder: (context, ref, _) {
               final notifAsync = ref.watch(notificationsProvider);
-              final unread = notifAsync.asData?.value
+              final unread = notifAsync.value
                       ?.where((n) => !n.isRead)
-                      .length
-                  ?? 0;
+                      .length ??
+                  0;
               return Stack(
                 children: [
                   IconButton(
@@ -95,7 +95,7 @@ class ChatListScreen extends ConsumerWidget {
             },
             child: ListView.separated(
               itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final item = items[index];
                 return _InboxTile(item: item);
@@ -117,7 +117,7 @@ class _InboxTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = item.user;
     final initial =
-        user.name.isNotEmpty ? user.name[0].toUpperCase() : '?';
+        user.nombre.isNotEmpty ? user.nombre[0].toUpperCase() : '?';
 
     return ListTile(
       leading: CircleAvatar(
@@ -129,7 +129,7 @@ class _InboxTile extends ConsumerWidget {
         ),
       ),
       title: Text(
-        user.name,
+        user.nombre,
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
       subtitle: Text(
@@ -171,7 +171,7 @@ class _InboxTile extends ConsumerWidget {
           MaterialPageRoute(
             builder: (_) => ChatRoomScreen(
               contactId: user.id,
-              contactName: user.name,
+              contactName: user.nombre,
             ),
           ),
         );

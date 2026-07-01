@@ -133,17 +133,17 @@ class AdminSidebar extends ConsumerWidget {
                   bottom: BorderSide(color: AppColors.border, width: 1),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 22,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      children: const [
                         Text('Cargando...',
                             style: TextStyle(color: AppColors.textSecondary)),
                       ],
@@ -152,7 +152,7 @@ class AdminSidebar extends ConsumerWidget {
                 ],
               ),
             ),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -319,11 +319,10 @@ class AdminSidebar extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
+                final router = GoRouter.of(context);
               Navigator.pop(ctx);
               await ref.read(authControllerProvider.notifier).logout();
-              if (context.mounted) {
-                context.go('/login');
-              }
+                router.go('/login');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,

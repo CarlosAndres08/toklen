@@ -28,12 +28,8 @@ class QuoteFormNotifier extends Notifier<QuoteFormState> {
   Future<bool> create(String serviceId, String description) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      if (token.isEmpty) throw Exception('No autenticado.');
-      final req =
-          QuoteCreateRequest(serviceId: serviceId, description: description);
-      final quote =
-          await ref.read(quoteRepositoryProvider).createQuote(token, req);
+      final req = QuoteCreateRequest(serviceId: serviceId, description: description);
+      final quote = await ref.read(quoteRepositoryProvider).createQuote(req);
       state = state.copyWith(isLoading: false, quote: quote);
       return true;
     } catch (e) {
@@ -45,14 +41,12 @@ class QuoteFormNotifier extends Notifier<QuoteFormState> {
   Future<bool> respond(String quoteId, String status, double? proposedPrice, {DateTime? startTime}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      if (token.isEmpty) throw Exception('No autenticado.');
       final req = QuoteRespondRequest(
         status: status,
         proposedPrice: proposedPrice,
         startTime: startTime,
       );
-      await ref.read(quoteRepositoryProvider).respondToQuote(token, quoteId, req);
+      await ref.read(quoteRepositoryProvider).respondToQuote(quoteId, req);
       state = state.copyWith(isLoading: false);
       ref.invalidate(myQuotesProvider);
       ref.invalidate(receivedQuotesProvider);
@@ -72,13 +66,13 @@ final quoteFormControllerProvider =
         QuoteFormNotifier.new);
 
 final myQuotesProvider = FutureProvider<List<QuoteModel>>((ref) {
-  final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-  if (token.isEmpty) return [];
-  return ref.read(quoteRepositoryProvider).getMyQuotes(token);
+  final authState = ref.watch(authControllerProvider);
+  if (!authState.value!.isAuthenticated) return [];
+  return ref.read(quoteRepositoryProvider).getMyQuotes();
 });
 
 final receivedQuotesProvider = FutureProvider<List<QuoteModel>>((ref) {
-  final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-  if (token.isEmpty) return [];
-  return ref.read(quoteRepositoryProvider).getReceivedQuotes(token);
+  final authState = ref.watch(authControllerProvider);
+  if (!authState.value!.isAuthenticated) return [];
+  return ref.read(quoteRepositoryProvider).getReceivedQuotes();
 });
