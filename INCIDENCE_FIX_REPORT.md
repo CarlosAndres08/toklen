@@ -38,5 +38,18 @@ Este informe detalla las soluciones aplicadas a las 6 incidencias detectadas dur
 - **Solución:** Se conectó el `onChanged` del switch con `updateServiceControllerProvider.notifier.executeUpdate`. Ahora el cambio de estado es persistente, funcional para el proveedor y ofrece feedback visual inmediato mediante un SnackBar.
 - **Archivos Modificados:** `lib/features/services/presentation/screens/my_services_screen.dart`
 
+## 7. Módulo de Reseñas (Estabilización y CRUD)
+- **Causa Raíz:** Las reseñas no aparecían inmediatamente debido a que no se invalidaban los providers de caché tras la creación. Además, el sistema original no permitía editar ni eliminar reseñas una vez publicadas.
+- **Solución:**
+    - **Backend:** Se implementaron los endpoints PUT y DELETE para reseñas en FastAPI, incluyendo validaciones de autoría para asegurar que solo el creador pueda modificar su opinión.
+    - **Frontend:** Se refactorizó `ReviewController` para realizar una invalidación en cascada (`ref.invalidate`) que actualiza inmediatamente la lista de reseñas, el promedio de estrellas en el detalle del servicio y el perfil del proveedor.
+    - **UX:** Se añadió un menú de opciones (Editar/Eliminar) en cada `ReviewCard` visible solo para el autor, y se integró el `ReviewForm` para soportar actualizaciones.
+- **Archivos Modificados:**
+    - `professional-services-api/app/api/v1/endpoints/reviews.py`
+    - `professional-services-api/app/services/review_manager.py`
+    - `professional-services-api/app/repositories/review_repository.py`
+    - `lib/features/reviews/presentation/providers/review_provider.dart`
+    - `lib/features/reviews/presentation/widgets/review_card.dart`
+
 ---
-**Resultado Final:** Se han corregido las 6 incidencias críticas manteniendo la arquitectura de Riverpod/Dio y el nuevo sistema de diseño. El análisis estático reporta 0 errores.
+**Resultado Final:** Se han corregido las incidencias detectadas y se ha estabilizado el módulo de reseñas con capacidades CRUD completas. La aplicación mantiene 0 errores de linter y una sincronización de datos en tiempo real.

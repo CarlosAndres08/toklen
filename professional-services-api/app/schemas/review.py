@@ -13,6 +13,11 @@ class ReviewCreate(BaseModel):
     comment: Optional[str] = Field(None, max_length=1000)
 
 
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    comment: Optional[str] = Field(None, max_length=1000)
+
+
 class BookingBasicForReview(BaseModel):
     id: uuid.UUID
     start_time: datetime

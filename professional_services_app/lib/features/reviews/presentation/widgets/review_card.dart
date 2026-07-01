@@ -1,15 +1,105 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/review_model.dart';
+import '../providers/review_provider.dart';
+import 'review_form.dart';
 
-class ReviewCard extends StatelessWidget {
-  const ReviewCard({required this.review, super.key});
+class ReviewCard extends ConsumerWidget {
+  const ReviewCard({
+    required this.review,
+    required this.serviceId,
+    required this.providerId,
+    super.key,
+  });
 
   final ReviewModel review;
+  final String serviceId;
+  final String providerId;
+
+  void _showEditDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Reseña'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 400),
+          child: SingleChildScrollView(
+            child: ReviewForm(
+              initialRating: review.rating,
+              initialComment: review.comment ?? '',
+              isLoading: ref.watch(reviewControllerProvider).isLoading,
+              onSubmit: (rating, comment) async {
+                final success = await ref
+                    .read(reviewControllerProvider.notifier)
+                    .executeUpdate(
+                      reviewId: review.id,
+                      rating: rating,
+                      comment: comment,
+                      serviceId: serviceId,
+                      providerId: providerId,
+                    );
+                if (success && context.mounted) {
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Reseña actualizada'),
+                        backgroundColor: AppColors.success),
+                  );
+                }
+                return success;
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar Reseña'),
+        content: const Text('¿Estás seguro de que deseas eliminar esta reseña?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final success = await ref
+                  .read(reviewControllerProvider.notifier)
+                  .executeDelete(
+                    reviewId: review.id,
+                    serviceId: serviceId,
+                    providerId: providerId,
+                  );
+              if (success && context.mounted) {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Reseña eliminada'),
+                      backgroundColor: AppColors.success),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = ref.watch(authControllerProvider).value?.user?.id;
+    final isAuthor = review.booking?.client?.id == currentUserId;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -49,6 +139,28 @@ class ReviewCard extends StatelessWidget {
                 ),
               ),
               _buildStars(review.rating),
+              if (isAuthor) ...[
+                const SizedBox(width: 4),
+                PopupMenuButton<String>(
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.more_vert, size: 18),
+                  onSelected: (val) {
+                    if (val == 'edit') _showEditDialog(context, ref);
+                    if (val == 'delete') _confirmDelete(context, ref);
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Editar'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Eliminar',
+                          style: TextStyle(color: AppColors.error)),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
           if (review.comment != null && review.comment!.isNotEmpty) ...[

@@ -15,7 +15,7 @@ from app.services.review_manager import (
     BookingNotCompletedError,
     ReviewAlreadyExistsError,
 )
-from app.schemas.review import ReviewCreate, ReviewResponse
+from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse
 from app.schemas.user import UserResponse
 
 router = APIRouter()
@@ -39,13 +39,32 @@ async def create_review(
 ):
     try:
         return await review_manager.create_review(review_data, current_user)
-    except BookingNotFoundError as e:
+    except (BookingNotFoundError, NotBookingClientError, BookingNotCompletedError, ReviewAlreadyExistsError) as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
-    except NotBookingClientError as e:
+
+
+@router.put("/{review_id}", response_model=ReviewResponse)
+async def update_review(
+    review_id: uuid.UUID,
+    review_data: ReviewUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    review_manager: ReviewManager = Depends(get_review_manager),
+):
+    try:
+        return await review_manager.update_review(review_id, review_data, current_user)
+    except (ReviewNotFoundError, ReviewNotOwnedError) as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
-    except BookingNotCompletedError as e:
-        raise HTTPException(status_code=e.status_code, detail=e.detail)
-    except ReviewAlreadyExistsError as e:
+
+
+@router.delete("/{review_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_review(
+    review_id: uuid.UUID,
+    current_user: UserResponse = Depends(get_current_user),
+    review_manager: ReviewManager = Depends(get_review_manager),
+):
+    try:
+        await review_manager.delete_review(review_id, current_user)
+    except (ReviewNotFoundError, ReviewNotOwnedError) as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail)
 
 

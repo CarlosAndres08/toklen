@@ -15,11 +15,30 @@ class ReviewRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def get_by_id(self, review_id: uuid.UUID) -> Review | None:
+        result = await self.db.execute(
+            select(Review)
+            .options(joinedload(Review.booking))
+            .where(Review.id == review_id)
+        )
+        return result.scalar_one_or_none()
+
     async def create(self, review: Review) -> Review:
         self.db.add(review)
         await self.db.flush()
         await self.db.refresh(review, attribute_names=["booking"])
         return review
+
+    async def update(self, review: Review, data: dict) -> Review:
+        for field, value in data.items():
+            setattr(review, field, value)
+        await self.db.flush()
+        await self.db.refresh(review, attribute_names=["booking"])
+        return review
+
+    async def delete(self, review: Review) -> None:
+        await self.db.delete(review)
+        await self.db.flush()
 
     async def get_by_booking_id(self, booking_id: uuid.UUID) -> Review | None:
         result = await self.db.execute(

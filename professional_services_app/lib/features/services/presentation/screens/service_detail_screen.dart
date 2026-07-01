@@ -251,7 +251,14 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                             );
                           }
                           return Column(
-                            children: reviews.map((r) => ReviewCard(review: r)).toList(),
+                            children: reviews
+                                .map((r) => ReviewCard(
+                                      review: r,
+                                      serviceId: currentService.id,
+                                      providerId:
+                                          currentService.provider?.id ?? '',
+                                    ))
+                                .toList(),
                           );
                         },
                       ),
