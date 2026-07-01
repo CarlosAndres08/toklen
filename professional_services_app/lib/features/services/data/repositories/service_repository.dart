@@ -125,7 +125,9 @@ class ServiceRepository {
   }) async {
     try {
       final formData = FormData.fromMap({
-        'files': MultipartFile.fromBytes(imageBytes, filename: fileName),
+        'files': [
+          MultipartFile.fromBytes(imageBytes, filename: fileName),
+        ],
       });
 
       await _client.post(

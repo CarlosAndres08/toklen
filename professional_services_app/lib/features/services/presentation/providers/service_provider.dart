@@ -75,14 +75,17 @@ class ServiceListNotifier extends AsyncNotifier<List<ServiceModel>> {
 final AsyncNotifierProvider<CreateServiceController, void> createServiceControllerProvider = AsyncNotifierProvider(CreateServiceController.new);
 class CreateServiceController extends AsyncNotifier<void> {
   @override Future<void> build() async {}
-  Future<bool> executeCreate(ServiceCreateRequest request) async {
+  Future<ServiceModel?> executeCreate(ServiceCreateRequest request) async {
     state = const AsyncLoading();
     try {
-      await ref.read(serviceRepositoryProvider).createService(request: request);
+      final service = await ref.read(serviceRepositoryProvider).createService(request: request);
       state = const AsyncData(null);
       ref.invalidate(serviceListProvider);
-      return true;
-    } catch (e, st) { state = AsyncError('Error al publicar.', st); return false; }
+      return service;
+    } catch (e, st) {
+      state = AsyncError('Error al publicar.', st);
+      return null;
+    }
   }
 }
 

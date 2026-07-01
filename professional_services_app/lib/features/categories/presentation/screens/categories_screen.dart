@@ -179,8 +179,9 @@ class _FeaturedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: () => context.push('/services/detail', extra: service),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 200,
         decoration: BoxDecoration(
