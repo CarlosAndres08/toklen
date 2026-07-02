@@ -62,13 +62,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                               icon: const Icon(Icons.delete_outline,
                                   color: AppColors.error),
                               onPressed: () async {
+                                final messenger = ScaffoldMessenger.of(context);
                                 final ok = await ref
                                     .read(scheduleFormControllerProvider
                                         .notifier)
                                     .delete(s.id);
-                                if (ok && mounted) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(
+                                if (ok) {
+                                  if (!mounted) return;
+                                  messenger.showSnackBar(
                                     const SnackBar(
                                         content: Text('Horario eliminado')),
                                   );
@@ -86,7 +87,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             DropdownButtonFormField<int>(
-              value: _selectedDay,
+              initialValue: _selectedDay,
               decoration: const InputDecoration(
                 labelText: 'Día de la semana',
                 border: OutlineInputBorder(),
@@ -124,10 +125,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               label: 'Guardar Horario',
               isLoading: formState.isLoading,
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
                 if (_selectedDay == null ||
                     _startTime == null ||
                     _endTime == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                         content:
                             Text('Completa todos los campos')),
@@ -144,23 +146,27 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 final ok = await ref
                     .read(scheduleFormControllerProvider.notifier)
                     .create(req);
-                if (ok && mounted) {
+                if (ok) {
+                  if (!mounted) return;
                   setState(() {
                     _selectedDay = null;
                     _startTime = null;
                     _endTime = null;
                   });
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                         content:
                             Text('Horario guardado'),
                         backgroundColor: AppColors.success),
                   );
-                } else if (formState.error != null && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(formState.error!)),
-                  );
+                } else {
+                  if (!mounted) return;
+                  if (formState.error != null) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                          content: Text(formState.error!)),
+                    );
+                  }
                 }
               },
             ),

@@ -69,8 +69,11 @@ class _RequestQuoteScreenState extends ConsumerState<RequestQuoteScreen> {
               isLoading: state.isLoading,
               onPressed: () async {
                 final desc = _descriptionController.text.trim();
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
+
                 if (desc.length < 10) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                         content: Text('Describe tu necesidad (mín. 10 caracteres)')),
                   );
@@ -79,18 +82,20 @@ class _RequestQuoteScreenState extends ConsumerState<RequestQuoteScreen> {
                 final ok = await ref
                     .read(quoteFormControllerProvider.notifier)
                     .create(widget.serviceId, desc);
-                if (ok && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+
+                if (!mounted) return;
+
+                if (ok) {
+                  messenger.showSnackBar(
                     const SnackBar(
                         content: Text('Cotización enviada exitosamente'),
                         backgroundColor: AppColors.success),
                   );
-                  Navigator.pop(context);
-                } else if (mounted) {
-                  final error =
-                      ref.read(quoteFormControllerProvider).error;
+                  navigator.pop();
+                } else {
+                  final error = ref.read(quoteFormControllerProvider).error;
                   if (error != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       SnackBar(content: Text(error)),
                     );
                   }

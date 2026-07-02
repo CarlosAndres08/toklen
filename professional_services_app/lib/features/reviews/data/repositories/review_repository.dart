@@ -1,66 +1,77 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../models/review_model.dart';
 
 class ReviewRepository {
   const ReviewRepository({
-    required http.Client client,
-    required String baseUrl,
-  })  : _client = client,
-        _baseUrl = baseUrl;
+    required Dio client,
+  }) : _client = client;
 
-  final http.Client _client;
-  final String _baseUrl;
+  final Dio _client;
 
   Future<List<ReviewModel>> getServiceReviews(String serviceId) async {
-    final Uri uri = Uri.parse('$_baseUrl/api/v1/reviews/service/$serviceId');
-
-    final http.Response response = await _client.get(
-      uri,
-      headers: const {'Accept': 'application/json'},
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final bodyString = response.body;
-      if (bodyString.isEmpty) return [];
-      final decoded = jsonDecode(bodyString) as List<dynamic>;
-      return decoded
+    try {
+      final response = await _client.get('/api/v1/reviews/service/$serviceId');
+      final List<dynamic> data = response.data as List<dynamic>;
+      return data
           .whereType<Map<String, dynamic>>()
           .map(ReviewModel.fromJson)
           .toList();
+    } on DioException catch (e) {
+      throw ApiException('Error al cargar reseñas.', statusCode: e.response?.statusCode);
     }
-
-    throw ApiException('Error al cargar reseñas.', statusCode: response.statusCode);
   }
 
   Future<ReviewModel> createReview({
-    required String token,
     required ReviewCreateRequest request,
   }) async {
-    final Uri uri = Uri.parse('$_baseUrl/api/v1/reviews/');
-
-    final http.Response response = await _client.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(request.toJson()),
-    );
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return ReviewModel.fromJson(data);
+    try {
+      final response = await _client.post(
+        '/api/v1/reviews/',
+        data: request.toJson(),
+      );
+      return ReviewModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      final detail = body is Map ? body['detail']?.toString() : null;
+      throw ApiException(
+        detail ?? 'Error al crear la reseña.',
+        statusCode: e.response?.statusCode,
+      );
     }
+  }
 
-    final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
-    final detail = body is Map ? body['detail']?.toString() : null;
-    throw ApiException(
-      detail ?? 'Error al crear la reseña.',
-      statusCode: response.statusCode,
-    );
+  Future<ReviewModel> updateReview({
+    required String reviewId,
+    required int rating,
+    String? comment,
+  }) async {
+    try {
+      final response = await _client.put(
+        '/api/v1/reviews/$reviewId',
+        data: {
+          'rating': rating,
+          'comment': comment,
+        },
+      );
+      return ReviewModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      final body = e.response?.data;
+      final detail = body is Map ? body['detail']?.toString() : null;
+      throw ApiException(
+        detail ?? 'Error al actualizar la reseña.',
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> deleteReview(String reviewId) async {
+    try {
+      await _client.delete('/api/v1/reviews/$reviewId');
+    } on DioException catch (e) {
+      throw ApiException('Error al eliminar la reseña.',
+          statusCode: e.response?.statusCode);
+    }
   }
 }

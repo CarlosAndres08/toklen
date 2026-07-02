@@ -47,7 +47,7 @@ class AdminSettingsScreen extends ConsumerWidget {
                         Icons.person_outline, 'Apellido', profile.apellido!),
                   _buildProfileRow(Icons.email, 'Email', profile.email),
                   _buildProfileRow(Icons.badge, 'Rol',
-                      profile.role.isEmpty ? 'Administrador' : profile.role),
+                      profile.rol.isEmpty ? 'Administrador' : profile.rol),
                   if (profile.phone != null && profile.phone!.isNotEmpty)
                     _buildProfileRow(
                         Icons.phone, 'Tel\u00e9fono', profile.phone!),

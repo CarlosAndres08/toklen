@@ -119,6 +119,9 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
                     setState(() => _offerLoading = true);
                     final priceText = priceController.text.trim();
                     final price = double.tryParse(priceText);
+                    final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(ctx);
+
                     if (price == null || price <= 0) {
                       setState(() => _offerLoading = false);
                       return;
@@ -127,17 +130,19 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
                         .read(quoteFormControllerProvider.notifier)
                         .respond(widget.quote.id, 'offered', price);
                     priceController.dispose();
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    if (ok && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+
+                    if (!mounted) return;
+                    navigator.pop();
+                    if (ok) {
+                      messenger.showSnackBar(
                         const SnackBar(
                             content: Text('Precio ofertado'),
                             backgroundColor: AppColors.success),
                       );
-                    } else if (context.mounted) {
+                    } else {
                       final error =
                           ref.read(quoteFormControllerProvider).error;
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         SnackBar(
                           content:
                               Text(error ?? 'Error al ofertar precio'),
@@ -166,7 +171,7 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
   Future<void> _showAcceptDialog(BuildContext context) async {
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
     TimeOfDay selectedTime = const TimeOfDay(hour: 9, minute: 0);
-    bool _dialogLoading = false;
+    bool dialogLoading = false;
 
     await showDialog(
       context: context,
@@ -231,14 +236,14 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
           ),
           actions: [
             TextButton(
-              onPressed: _dialogLoading ? null : () => Navigator.pop(ctx),
+              onPressed: dialogLoading ? null : () => Navigator.pop(ctx),
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: _dialogLoading
+              onPressed: dialogLoading
                   ? null
                   : () async {
-                      setDialogState(() => _dialogLoading = true);
+                      setDialogState(() => dialogLoading = true);
                       final startTime = DateTime(
                         selectedDate.year,
                         selectedDate.month,
@@ -246,23 +251,28 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
                         selectedTime.hour,
                         selectedTime.minute,
                       );
+                      final messenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(ctx);
+
                       final ok = await ref
                           .read(quoteFormControllerProvider.notifier)
                           .respond(widget.quote.id, 'accepted', null,
                               startTime: startTime);
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      if (ok && context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+
+                      if (!mounted) return;
+                      navigator.pop();
+                      if (ok) {
+                        messenger.showSnackBar(
                           const SnackBar(
                             content: Text(
                                 'Cotización aceptada! Reserva creada.'),
                             backgroundColor: AppColors.success,
                           ),
                         );
-                      } else if (context.mounted) {
+                      } else {
                         final error =
                             ref.read(quoteFormControllerProvider).error;
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
                             content: Text(
                                 error ?? 'Error al aceptar cotización'),
@@ -273,7 +283,7 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
                     },
               style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success),
-              child: _dialogLoading
+              child: dialogLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
@@ -289,11 +299,13 @@ class _QuoteTileState extends ConsumerState<_QuoteTile> {
   }
 
   Future<void> _rejectQuote(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
     final ok = await ref
         .read(quoteFormControllerProvider.notifier)
         .respond(widget.quote.id, 'declined', null);
-    if (ok && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    if (ok) {
+      if (!mounted) return;
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('Cotización rechazada'),
         ),

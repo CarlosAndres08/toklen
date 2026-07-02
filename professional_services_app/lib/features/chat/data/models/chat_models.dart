@@ -1,19 +1,21 @@
 class UserBasic {
   const UserBasic({
     this.id = '',
-    this.name = '',
+    this.nombre = '',
     this.profilePictureUrl,
   });
 
   final String id;
-  final String name;
+  final String nombre;
   final String? profilePictureUrl;
+
+  String get name => nombre;
 
   factory UserBasic.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const UserBasic();
     return UserBasic(
       id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? '',
+      nombre: (json['nombre'] ?? json['name'])?.toString() ?? '',
       profilePictureUrl: json['profile_picture_url']?.toString(),
     );
   }

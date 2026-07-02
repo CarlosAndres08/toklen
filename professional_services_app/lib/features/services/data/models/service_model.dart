@@ -16,7 +16,7 @@ class ServiceBadgeModel {
     if (json == null) return const ServiceBadgeModel();
     return ServiceBadgeModel(
       id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? '',
+      name: (json['name'] ?? json['nombre'])?.toString() ?? '',
       iconUrl: json['icon_url']?.toString() ?? '',
     );
   }
@@ -27,19 +27,23 @@ class ServiceImageModel {
   const ServiceImageModel({
     this.id = '',
     this.url = '',
-    this.createdAt,
+    this.fechaCreacion,
   });
 
   final String id;
   final String url;
-  final DateTime? createdAt;
+  final DateTime? fechaCreacion;
+
+  DateTime? get createdAt => fechaCreacion;
 
   factory ServiceImageModel.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const ServiceImageModel();
     return ServiceImageModel(
       id: json['id']?.toString() ?? '',
       url: json['url']?.toString() ?? '',
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
+      fechaCreacion: (json['fecha_creacion'] ?? json['created_at']) != null
+          ? DateTime.tryParse(json['fecha_creacion'] ?? json['created_at'])
+          : null,
     );
   }
 }
@@ -48,7 +52,7 @@ class ServiceImageModel {
 class ServiceProviderModel {
   const ServiceProviderModel({
     this.id = '',
-    this.name = '',
+    this.nombre = '',
     this.email = '',
     this.profilePictureUrl = '',
     this.isVerified = false,
@@ -59,7 +63,7 @@ class ServiceProviderModel {
   });
 
   final String id;
-  final String name;
+  final String nombre;
   final String email;
   final String profilePictureUrl;
   final bool isVerified;
@@ -68,11 +72,13 @@ class ServiceProviderModel {
   final double? longitude;
   final List<ServiceBadgeModel> badges;
 
+  String get name => nombre;
+
   factory ServiceProviderModel.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const ServiceProviderModel();
     return ServiceProviderModel(
       id: json['id']?.toString() ?? '',
-      name: json['name']?.toString() ?? '',
+      nombre: (json['nombre'] ?? json['name'])?.toString() ?? '',
       email: json['email']?.toString() ?? '',
       profilePictureUrl: json['profile_picture_url']?.toString() ?? '',
       isVerified: json['is_verified'] == true,
@@ -102,7 +108,7 @@ class ServiceModel {
     this.distance,
     this.averageRating,
     this.reviewsCount = 0,
-    this.createdAt,
+    this.fechaCreacion,
     this.provider,
     this.category,
     this.images = const [],
@@ -119,10 +125,12 @@ class ServiceModel {
   final double? distance;
   final double? averageRating;
   final int reviewsCount;
-  final DateTime? createdAt;
+  final DateTime? fechaCreacion;
   final ServiceProviderModel? provider;
   final CategoryModel? category;
   final List<ServiceImageModel> images;
+
+  DateTime? get createdAt => fechaCreacion;
 
   factory ServiceModel.fromJson(Map<String, dynamic>? json) {
     if (json == null) return const ServiceModel();
@@ -131,7 +139,6 @@ class ServiceModel {
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
       description: json['description']?.toString() ?? '',
-      // Extraemos el precio de forma segura (sea int o double desde FastAPI)
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       isActive: json['is_active'] ?? true,
       isFeatured: json['is_featured'] == true,
@@ -140,9 +147,10 @@ class ServiceModel {
       distance: (json['distance'] as num?)?.toDouble(),
       averageRating: (json['average_rating'] as num?)?.toDouble(),
       reviewsCount: (json['reviews_count'] as num?)?.toInt() ?? 0,
-      createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at']) : null,
+      fechaCreacion: (json['fecha_creacion'] ?? json['created_at']) != null
+          ? DateTime.tryParse(json['fecha_creacion'] ?? json['created_at'])
+          : null,
       
-      // Mapeamos los objetos anidados
       provider: json['provider'] != null 
           ? ServiceProviderModel.fromJson(json['provider'] as Map<String, dynamic>) 
           : null,
@@ -150,7 +158,6 @@ class ServiceModel {
           ? CategoryModel.fromJson(json['category'] as Map<String, dynamic>) 
           : null,
           
-      // Mapeamos la lista de imágenes de la galería
       images: (json['images'] as List<dynamic>?)
               ?.whereType<Map<String, dynamic>>()
               .map(ServiceImageModel.fromJson)

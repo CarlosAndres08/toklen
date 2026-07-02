@@ -1,81 +1,113 @@
-import 'dart:convert';
-
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 
 import '../../../../core/network/api_exception.dart';
-import '../../../../core/storage/token_storage.dart';
 import '../models/auth_response_model.dart';
 import '../models/user_model.dart';
 
+import '../../../../core/storage/token_storage.dart';
+
 class AuthRepository {
   const AuthRepository({
-    required http.Client client,
-    required String baseUrl,
+    required Dio client,
     required TokenStorage tokenStorage,
   }) : _client = client,
-       _baseUrl = baseUrl,
        _tokenStorage = tokenStorage;
 
-  final http.Client _client;
-  final String _baseUrl;
+  final Dio _client;
   final TokenStorage _tokenStorage;
 
   Future<AuthResponseModel> register({
     required String name,
     required String email,
     required String password,
-    String role = 'client',
+    String rol = 'client',
   }) async {
-    final Uri uri = Uri.parse('$_baseUrl/api/v1/auth/register');
-    final http.Response response = await _client.post(
-      uri,
-      headers: const <String, String>{
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode(<String, String>{
-        'name': name,
-        'email': email,
-        'password': password,
-        'role': role,
-      }),
-    );
+    try {
+      final response = await _client.post(
+        '/api/v1/auth/register',
+        data: {
+          'nombre': name, // Usamos nombre para consistencia con backend
+          'email': email,
+          'password': password,
+          'rol': rol,    // Usamos rol para consistencia con backend
+        },
+      );
 
-    final Map<String, dynamic> data = _decodeResponse(response);
-    final UserModel user = UserModel.fromJson(data);
-
-    return AuthResponseModel(tokenType: 'bearer', user: user);
+      final UserModel user = UserModel.fromJson(response.data as Map<String, dynamic>);
+      return AuthResponseModel(tokenType: 'bearer', user: user);
+    } on DioException catch (e) {
+      throw ApiException(
+        _extractErrorMessage(e.response?.data),
+        statusCode: e.response?.statusCode,
+      );
+    }
   }
 
   Future<AuthResponseModel> login({
     required String email,
     required String password,
   }) async {
-    final Uri uri = Uri.parse('$_baseUrl/api/v1/auth/login');
-    final http.Response response = await _client.post(
-      uri,
-      headers: const <String, String>{
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
-      body: <String, String>{'username': email, 'password': password},
-    );
+    try {
+      // Login usa Form-Data para OAuth2 en FastAPI.
+      // Usamos un Map simple con content-type x-www-form-urlencoded para que Dio lo codifique correctamente.
+      final response = await _client.post(
+        '/api/v1/auth/login',
+        data: {
+          'username': email,
+          'password': password,
+        },
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+        ),
+      );
 
-    final Map<String, dynamic> data = _decodeResponse(response);
-    return AuthResponseModel.fromJson(data);
+      return AuthResponseModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        _extractErrorMessage(e.response?.data),
+        statusCode: e.response?.statusCode,
+      );
+    }
   }
 
   Future<UserModel> getCurrentUser(String accessToken) async {
-    final Uri uri = Uri.parse('$_baseUrl/api/v1/auth/me');
-    final http.Response response = await _client.get(
-      uri,
-      headers: <String, String>{
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      },
-    );
+    try {
+      final response = await _client.get(
+        '/api/v1/auth/me',
+        options: Options(
+          headers: {'Authorization': 'Bearer $accessToken'},
+        ),
+      );
 
-    return UserModel.fromJson(_decodeResponse(response));
+      return UserModel.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ApiException(
+        _extractErrorMessage(e.response?.data),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  // Los métodos de persistencia se mantienen igual o se mueven a un Service
+  // En el código original estaban en AuthRepository pero usaban TokenStorage directamente.
+  // El AuthProvider actual usa TokenStorage por separado o inyectado.
+
+  String _extractErrorMessage(Object? body) {
+    if (body is Map<String, dynamic>) {
+      final Object? detail = body['detail'];
+      if (detail is String && detail.isNotEmpty) {
+        return detail;
+      }
+
+      if (detail is List<dynamic> && detail.isNotEmpty) {
+        final Object? firstError = detail.first;
+        if (firstError is Map<String, dynamic>) {
+          return firstError['msg']?.toString() ?? 'La solicitud no es válida.';
+        }
+      }
+    }
+
+    return 'No pudimos completar la solicitud. Inténtalo nuevamente.';
   }
 
   Future<void> persistToken(String accessToken) {
@@ -88,42 +120,5 @@ class AuthRepository {
 
   Future<void> clearSession() {
     return _tokenStorage.clear();
-  }
-
-  Map<String, dynamic> _decodeResponse(http.Response response) {
-    final Object? decodedBody = response.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(response.body);
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      if (decodedBody is Map<String, dynamic>) {
-        return decodedBody;
-      }
-
-      return <String, dynamic>{};
-    }
-
-    throw ApiException(
-      _extractErrorMessage(decodedBody),
-      statusCode: response.statusCode,
-    );
-  }
-
-  String _extractErrorMessage(Object? body) {
-    if (body is Map<String, dynamic>) {
-      final Object? detail = body['detail'];
-      if (detail is String && detail.isNotEmpty) {
-        return detail;
-      }
-
-      if (detail is List<dynamic> && detail.isNotEmpty) {
-        final Object? firstError = detail.first;
-        if (firstError is Map<String, dynamic>) {
-          return firstError['msg']?.toString() ?? 'La solicitud no es valida.';
-        }
-      }
-    }
-
-    return 'No pudimos completar la solicitud. Intentalo nuevamente.';
   }
 }

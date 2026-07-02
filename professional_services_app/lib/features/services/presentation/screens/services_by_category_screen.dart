@@ -34,7 +34,7 @@ class _ServicesByCategoryScreenState
   Widget build(BuildContext context) {
     final servicesAsync = ref.watch(serviceListProvider);
     final authState = ref.watch(authControllerProvider).value;
-    final String userRole = authState?.user?.role ?? 'client';
+    final String userRole = authState?.user?.rol ?? 'client';
     final bool isProvider = userRole == 'provider';
 
     return Scaffold(
@@ -144,7 +144,10 @@ class _ServicesByCategoryScreenState
                   itemCount: services.length,
                   itemBuilder: (context, index) {
                     final service = services[index];
-                    return ServiceCard(service: service);
+                    return ServiceCard(
+                      service: service,
+                      onTap: () => context.push('/services/detail', extra: service),
+                    );
                   },
                 );
               },

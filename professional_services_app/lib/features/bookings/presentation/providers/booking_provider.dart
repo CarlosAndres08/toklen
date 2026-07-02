@@ -1,8 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/config/app_config.dart';
-import '../../../../core/network/api_exception.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/repositories/booking_repository.dart';
 
@@ -10,8 +8,7 @@ import '../../data/repositories/booking_repository.dart';
 final Provider<BookingRepository> bookingRepositoryProvider =
     Provider<BookingRepository>((Ref ref) {
   return BookingRepository(
-    client: ref.watch(httpClientProvider),
-    baseUrl: AppConfig.apiBaseUrl,
+    client: ref.watch(dioProvider),
   );
 });
 
@@ -28,24 +25,13 @@ class MyBookingsNotifier extends AsyncNotifier<List<BookingModel>> {
   }
 
   Future<List<BookingModel>> _fetchMyBookings() async {
-    final String token = _getAuthToken();
     final BookingRepository repository = ref.read(bookingRepositoryProvider);
-    return repository.getMyBookings(token: token);
+    return repository.getMyBookings();
   }
 
   Future<void> refresh() async {
     state = const AsyncLoading<List<BookingModel>>();
     state = await AsyncValue.guard(() => _fetchMyBookings());
-  }
-
-  String _getAuthToken() {
-    final AuthState authState =
-        ref.read(authControllerProvider).value ?? const AuthState();
-    final String token = authState.accessToken ?? '';
-    if (token.isEmpty) {
-      throw const ApiException('No hay sesión activa.');
-    }
-    return token;
   }
 }
 
@@ -62,24 +48,13 @@ class BookingRequestsNotifier extends AsyncNotifier<List<BookingModel>> {
   }
 
   Future<List<BookingModel>> _fetchBookingRequests() async {
-    final String token = _getAuthToken();
     final BookingRepository repository = ref.read(bookingRepositoryProvider);
-    return repository.getBookingRequests(token: token);
+    return repository.getBookingRequests();
   }
 
   Future<void> refresh() async {
     state = const AsyncLoading<List<BookingModel>>();
     state = await AsyncValue.guard(() => _fetchBookingRequests());
-  }
-
-  String _getAuthToken() {
-    final AuthState authState =
-        ref.read(authControllerProvider).value ?? const AuthState();
-    final String token = authState.accessToken ?? '';
-    if (token.isEmpty) {
-      throw const ApiException('No hay sesión activa.');
-    }
-    return token;
   }
 }
 
@@ -95,36 +70,16 @@ class CreateBookingController extends AsyncNotifier<void> {
 
   Future<bool> createBooking(BookingCreateRequest request) async {
     state = const AsyncLoading<void>();
-
     try {
-      final String token = _getAuthToken();
       final BookingRepository repository = ref.read(bookingRepositoryProvider);
-
-      await repository.createBooking(token: token, request: request);
-
+      await repository.createBooking(request: request);
       state = const AsyncData<void>(null);
-
-      // Refrescar la lista de reservas
       ref.invalidate(myBookingsProvider);
-
       return true;
-    } on ApiException catch (e, st) {
-      state = AsyncError<void>(e.message, st);
-      return false;
-    } on Object catch (e, st) {
-      state = AsyncError<void>('Error al crear la reserva.', st);
+    } catch (e, st) {
+      state = AsyncError<void>(e.toString(), st);
       return false;
     }
-  }
-
-  String _getAuthToken() {
-    final AuthState authState =
-        ref.read(authControllerProvider).value ?? const AuthState();
-    final String token = authState.accessToken ?? '';
-    if (token.isEmpty) {
-      throw const ApiException('No hay sesión activa.');
-    }
-    return token;
   }
 }
 
@@ -143,40 +98,19 @@ class UpdateBookingStatusController extends AsyncNotifier<void> {
     required BookingStatusUpdate statusUpdate,
   }) async {
     state = const AsyncLoading<void>();
-
     try {
-      final String token = _getAuthToken();
       final BookingRepository repository = ref.read(bookingRepositoryProvider);
-
       await repository.updateBookingStatus(
-        token: token,
         bookingId: bookingId,
         statusUpdate: statusUpdate,
       );
-
       state = const AsyncData<void>(null);
-
-      // Refrescar las listas
       ref.invalidate(myBookingsProvider);
       ref.invalidate(bookingRequestsProvider);
-
       return true;
-    } on ApiException catch (e, st) {
-      state = AsyncError<void>(e.message, st);
-      return false;
-    } on Object catch (e, st) {
-      state = AsyncError<void>('Error al actualizar la reserva.', st);
+    } catch (e, st) {
+      state = AsyncError<void>(e.toString(), st);
       return false;
     }
-  }
-
-  String _getAuthToken() {
-    final AuthState authState =
-        ref.read(authControllerProvider).value ?? const AuthState();
-    final String token = authState.accessToken ?? '';
-    if (token.isEmpty) {
-      throw const ApiException('No hay sesión activa.');
-    }
-    return token;
   }
 }

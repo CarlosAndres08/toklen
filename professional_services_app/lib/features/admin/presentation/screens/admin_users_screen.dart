@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/skeleton_loader.dart';
 import '../providers/user_management_provider.dart';
 import '../../data/models/user_management_models.dart';
 
@@ -39,85 +41,27 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
         children: [
           _buildHeader(),
           _buildFilters(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Expanded(
             child: usersAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text('Error: $e',
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () =>
-                          ref.invalidate(userListProvider(_params)),
-                      child: const Text('Reintentar'),
-                    ),
-                  ],
-                ),
+              loading: () => _buildSkeleton(),
+              error: (e, _) => EmptyState(
+                title: 'Error de carga',
+                message: e.toString(),
+                icon: Icons.error_outline,
+                actionLabel: 'Reintentar',
+                onActionPressed: () => ref.invalidate(userListProvider(_params)),
               ),
               data: (users) {
                 if (users.isEmpty) {
-                  return const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.people_outline,
-                            size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('No se encontraron usuarios',
-                            style: TextStyle(
-                                color: Colors.grey, fontSize: 16)),
-                      ],
-                    ),
+                  return const EmptyState(
+                    title: 'No se encontraron usuarios',
+                    message: 'Intenta con otros términos de búsqueda o filtros.',
                   );
                 }
                 return RefreshIndicator(
-                  onRefresh: () async =>
-                      ref.invalidate(userListProvider(_params)),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      if (constraints.maxWidth < 700) {
-                        return ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          itemCount: users.length,
-                          itemBuilder: (context, index) {
-                            final user =
-                                users[index] as Map<String, dynamic>;
-                            return _buildUserCard(user);
-                          },
-                        );
-                      }
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(
-                              AppColors.surface),
-                          dataRowMinHeight: 48,
-                          dataRowMaxHeight: 72,
-                          columnSpacing: 24,
-                          columns: const [
-                            DataColumn(label: Text('Avatar')),
-                            DataColumn(label: Text('Nombre')),
-                            DataColumn(label: Text('Email')),
-                            DataColumn(label: Text('Rol')),
-                            DataColumn(label: Text('Estado')),
-                            DataColumn(label: Text('Acciones')),
-                          ],
-                          rows: users.map((u) {
-                            final user =
-                                u as Map<String, dynamic>;
-                            return _buildUserRow(user);
-                          }).toList(),
-                        ),
-                      );
-                    },
-                  ),
+                  onRefresh: () async => ref.invalidate(userListProvider(_params)),
+                  child: _buildContent(users),
                 );
               },
             ),
@@ -132,25 +76,18 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Row(
         children: [
-          const Icon(Icons.people, color: AppColors.primary, size: 28),
-          const SizedBox(width: 12),
-          Column(
+          const Icon(Icons.people_alt_rounded, color: AppColors.primary, size: 32),
+          const SizedBox(width: 16),
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Gesti\u00f3n de Usuarios',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              Text(
+                'Gestión de Usuarios',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5),
               ),
               Text(
-                'Administra todos los usuarios del sistema',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary.withValues(alpha: 0.8),
-                ),
+                'Administra accesos, roles y sanciones',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -161,57 +98,37 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
   Widget _buildFilters() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
       child: Row(
         children: [
           Expanded(
             child: TextField(
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Buscar por nombre o email...',
-                prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: AppColors.surface,
-                contentPadding:
-                    const EdgeInsets.symmetric(vertical: 12),
-                isDense: true,
+                prefixIcon: Icon(Icons.search_rounded, size: 20),
+                contentPadding: EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: AppColors.cardBorder),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String?>(
                 value: _rolFilter,
-                hint: const Text('Rol',
-                    style: TextStyle(fontSize: 14)),
+                hint: const Text('Filtrar por Rol', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                 items: const [
-                  DropdownMenuItem(
-                      value: null, child: Text('Todos los roles')),
-                  DropdownMenuItem(
-                      value: 'client', child: Text('Clientes')),
-                  DropdownMenuItem(
-                      value: 'provider', child: Text('Proveedores')),
-                  DropdownMenuItem(
-                      value: 'admin', child: Text('Administradores')),
+                  DropdownMenuItem(value: null, child: Text('Todos')),
+                  DropdownMenuItem(value: 'client', child: Text('Clientes')),
+                  DropdownMenuItem(value: 'provider', child: Text('Proveedores')),
+                  DropdownMenuItem(value: 'admin', child: Text('Admins')),
                 ],
                 onChanged: (v) => setState(() => _rolFilter = v),
               ),
@@ -222,99 +139,76 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     );
   }
 
-  DataRow _buildUserRow(Map<String, dynamic> user) {
-    final name = user['name']?.toString() ?? user['nombre']?.toString() ?? '';
-    final email = user['email']?.toString() ?? '';
-    final role = user['role']?.toString() ?? user['rol']?.toString() ?? 'client';
-    final isSuspended = user['is_suspended'] == true;
-    final isActive = user['is_active'] != false;
+  Widget _buildContent(List<dynamic> users) {
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 800) {
+        return ListView.builder(
+          padding: const EdgeInsets.all(24),
+          itemCount: users.length,
+          itemBuilder: (context, index) => _buildUserMobileCard(users[index]),
+        );
+      }
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: DataTable(
+            columns: const [
+              DataColumn(label: Text('Usuario', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Rol', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Estado', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w700))),
+            ],
+            rows: users.map((u) => _buildUserRow(u as Map<String, dynamic>)).toList(),
+          ),
+        ),
+      );
+    });
+  }
 
-    Color roleColor;
-    String roleLabel;
-    switch (role) {
-      case 'admin':
-        roleColor = Colors.red;
-        roleLabel = 'Admin';
-        break;
-      case 'provider':
-        roleColor = Colors.blue;
-        roleLabel = 'Proveedor';
-        break;
-      default:
-        roleColor = Colors.green;
-        roleLabel = 'Cliente';
-    }
+  DataRow _buildUserRow(Map<String, dynamic> user) {
+    final name = user['nombre']?.toString() ?? user['name']?.toString() ?? 'U';
+    final role = (user['rol'] ?? user['role'])?.toString() ?? 'client';
+    final isSuspended = user['is_suspended'] == true;
 
     return DataRow(
       cells: [
-        DataCell(
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: roleColor.withValues(alpha: 0.15),
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'U',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, color: roleColor),
-            ),
-          ),
-        ),
-        DataCell(Text(name,
-            style: const TextStyle(fontWeight: FontWeight.w500))),
-        DataCell(Text(email, style: const TextStyle(fontSize: 13))),
-        DataCell(Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: roleColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Text(roleLabel,
-              style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: roleColor)),
-        )),
-        DataCell(
-          isSuspended
-              ? const Text('Suspendido',
-                  style: TextStyle(color: Colors.orange, fontSize: 13))
-              : isActive
-                  ? const Text('Activo',
-                      style: TextStyle(color: Colors.green, fontSize: 13))
-                  : const Text('Inactivo',
-                      style: TextStyle(color: Colors.grey, fontSize: 13)),
-        ),
         DataCell(Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
+            CircleAvatar(radius: 16, child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U')),
+            const SizedBox(width: 12),
+            Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        )),
+        DataCell(Text(user['email']?.toString() ?? '-')),
+        DataCell(_buildRoleBadge(role)),
+        DataCell(_buildStatusBadge(isSuspended, user['is_active'] != false)),
+        DataCell(Row(
+          children: [
+            IconButton(
+              onPressed: () => _showEditDialog(user),
+              icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+            ),
             if (isSuspended)
               IconButton(
                 onPressed: () => _unsuspendUser(user),
-                icon: const Icon(Icons.unpublished,
-                    color: Colors.orange, size: 20),
+                icon: const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
                 tooltip: 'Reactivar',
-                visualDensity: VisualDensity.compact,
               )
             else
               IconButton(
-                onPressed: () => _confirmSuspend(user),
-                icon: const Icon(Icons.block,
-                    color: Colors.red, size: 20),
+                onPressed: () => _showSuspendDialog(user),
+                icon: const Icon(Icons.block_flipped, color: Colors.orange, size: 20),
                 tooltip: 'Suspender',
-                visualDensity: VisualDensity.compact,
               ),
             IconButton(
-              onPressed: () => _showEditDialog(user),
-              icon: const Icon(Icons.edit_outlined,
-                  color: AppColors.primary, size: 20),
-              tooltip: 'Editar',
-              visualDensity: VisualDensity.compact,
-            ),
-            IconButton(
               onPressed: () => _confirmDelete(user),
-              icon: const Icon(Icons.delete_outline,
-                  color: AppColors.error, size: 20),
-              tooltip: 'Eliminar',
-              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
             ),
           ],
         )),
@@ -322,327 +216,117 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
-    final name = user['name']?.toString() ?? user['nombre']?.toString() ?? '';
-    final email = user['email']?.toString() ?? '';
-    final role =
-        user['role']?.toString() ?? user['rol']?.toString() ?? 'client';
-    final isSuspended = user['is_suspended'] == true;
+  Widget _buildRoleBadge(String role) {
+    Color color = Colors.blue;
+    if (role == 'admin') color = Colors.red;
+    if (role == 'provider') color = AppColors.primary;
 
-    Color roleColor;
-    String roleLabel;
-    switch (role) {
-      case 'admin':
-        roleColor = Colors.red;
-        roleLabel = 'ADMIN';
-        break;
-      case 'provider':
-        roleColor = Colors.blue;
-        roleLabel = 'PROVEEDOR';
-        break;
-      default:
-        roleColor = Colors.green;
-        roleLabel = 'CLIENTE';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+      child: Text(role.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
+    );
+  }
+
+  Widget _buildStatusBadge(bool isSuspended, bool isActive) {
+    if (isSuspended) {
+      return const Text('SUSPENDIDO', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11));
     }
+    return Text(isActive ? 'ACTIVO' : 'INACTIVO',
+      style: TextStyle(color: isActive ? Colors.green : Colors.grey, fontWeight: FontWeight.bold, fontSize: 11));
+  }
 
+  Widget _buildUserMobileCard(Map<String, dynamic> user) {
+    final name = user['nombre']?.toString() ?? user['name']?.toString() ?? 'Usuario';
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: roleColor.withValues(alpha: 0.15),
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: roleColor),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text(email,
-                      style: const TextStyle(
-                          fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: roleColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(roleLabel,
-                            style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: roleColor)),
-                      ),
-                      if (isSuspended) ...[
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text('SUSPENDIDO',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.orange)),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 20),
-              onSelected: (v) {
-                if (v == 'edit') _showEditDialog(user);
-                if (v == 'suspend' && !isSuspended) _confirmSuspend(user);
-                if (v == 'unsuspend' && isSuspended) _unsuspendUser(user);
-                if (v == 'delete') _confirmDelete(user);
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                if (isSuspended)
-                  const PopupMenuItem(
-                      value: 'unsuspend', child: Text('Reactivar'))
-                else
-                  const PopupMenuItem(
-                      value: 'suspend', child: Text('Suspender')),
-                const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Eliminar',
-                        style: TextStyle(color: Colors.red))),
-              ],
-            ),
-          ],
-        ),
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U')),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(user['email']?.toString() ?? ''),
+        trailing: _buildRoleBadge((user['rol'] ?? user['role'] ?? 'client').toString()),
+        onTap: () => _showEditDialog(user),
       ),
     );
   }
 
   void _showEditDialog(Map<String, dynamic> user) {
-    final nameController =
-        TextEditingController(text: user['name']?.toString() ?? '');
-    final apellidoController =
-        TextEditingController(text: user['apellido']?.toString() ?? '');
-    final emailController =
-        TextEditingController(text: user['email']?.toString() ?? '');
-    final phoneController =
-        TextEditingController(text: user['phone']?.toString() ?? '');
-    String selectedRole =
-        user['role']?.toString() ?? user['rol']?.toString() ?? 'client';
-    bool isActive = user['is_active'] != false;
-    bool isVerified = user['is_verified'] == true;
+    final nameController = TextEditingController(text: user['nombre']?.toString() ?? user['name']?.toString() ?? '');
+    String selectedRole = (user['rol'] ?? user['role'] ?? 'client').toString();
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16)),
-          title: Text('Editar Usuario'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Nombre',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: apellidoController,
-                  decoration: const InputDecoration(
-                    labelText: 'Apellido',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(
-                    labelText: 'Tel\u00e9fono',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedRole,
-                  decoration: const InputDecoration(
-                    labelText: 'Rol',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'client', child: Text('Cliente')),
-                    DropdownMenuItem(
-                        value: 'provider', child: Text('Proveedor')),
-                    DropdownMenuItem(
-                        value: 'admin', child: Text('Admin')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) {
-                      setDialogState(() => selectedRole = v);
-                    }
-                  },
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  title: const Text('Activo'),
-                  value: isActive,
-                  onChanged: (v) =>
-                      setDialogState(() => isActive = v),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                SwitchListTile(
-                  title: const Text('Verificado'),
-                  value: isVerified,
-                  onChanged: (v) =>
-                      setDialogState(() => isVerified = v),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final request = UserUpdateRequest(
-                  name: nameController.text.trim(),
-                  apellido: apellidoController.text.trim(),
-                  email: emailController.text.trim(),
-                  phone: phoneController.text.trim(),
-                  rol: selectedRole,
-                  isActive: isActive,
-                  isVerified: isVerified,
-                );
-                final ok = await ref
-                    .read(userManagementControllerProvider)
-                    .updateUser(user['id'].toString(), request);
-                if (!context.mounted) return;
-                Navigator.pop(ctx);
-                if (ok) {
-                  ref.invalidate(userListProvider(_params));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Usuario actualizado'),
-                        backgroundColor: Colors.green),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Error al actualizar usuario'),
-                        backgroundColor: Colors.red),
-                  );
-                }
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _confirmSuspend(Map<String, dynamic> user) {
-    final reasonController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Text('Suspender Usuario'),
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Usuario'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-                '\u00bfSuspender a ${user['name'] ?? user['nombre'] ?? ''}?'),
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nombre')),
             const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Motivo de suspensi\u00f3n *',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 3,
-              autofocus: true,
+            DropdownButtonFormField<String>(
+              value: selectedRole,
+              decoration: const InputDecoration(labelText: 'Rol'),
+              items: const [
+                DropdownMenuItem(value: 'client', child: Text('Cliente')),
+                DropdownMenuItem(value: 'provider', child: Text('Proveedor')),
+                DropdownMenuItem(value: 'admin', child: Text('Administrador')),
+              ],
+              onChanged: (v) {
+                if (v != null) selectedRole = v;
+              },
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton.icon(
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
             onPressed: () async {
-              if (reasonController.text.trim().isEmpty) return;
-              final ok = await ref
-                  .read(userManagementControllerProvider)
-                  .suspendUser(user['id'].toString(),
-                      reasonController.text.trim());
-              if (!context.mounted) return;
-              Navigator.pop(context);
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
+
+              final ok = await ref.read(userManagementControllerProvider).updateUser(user['id'].toString(), UserUpdateRequest(nombre: nameController.text, rol: selectedRole));
+
+              navigator.pop();
               if (ok) {
                 ref.invalidate(userListProvider(_params));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Usuario suspendido'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Error al suspender usuario'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                messenger.showSnackBar(const SnackBar(content: Text('Error al actualizar usuario'), backgroundColor: Colors.red));
               }
             },
-            icon: const Icon(Icons.block, size: 18),
-            label: const Text('Suspender'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSuspendDialog(Map<String, dynamic> user) {
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Suspender Usuario'),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(labelText: 'Motivo de suspensión'),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () async {
+              if (reasonController.text.isEmpty) return;
+              final navigator = Navigator.of(ctx);
+
+              final ok = await ref.read(userManagementControllerProvider).suspendUser(user['id'].toString(), reasonController.text);
+
+              navigator.pop();
+              if (ok) {
+                ref.invalidate(userListProvider(_params));
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
+            child: const Text('Suspender'),
           ),
         ],
       ),
@@ -650,73 +334,41 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   }
 
   void _unsuspendUser(Map<String, dynamic> user) async {
-    final ok = await ref
-        .read(userManagementControllerProvider)
-        .unsuspendUser(user['id'].toString());
-    if (!context.mounted) return;
-    if (ok) {
-      ref.invalidate(userListProvider(_params));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Usuario reactivado'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+    final ok = await ref.read(userManagementControllerProvider).unsuspendUser(user['id'].toString());
+    if (ok) ref.invalidate(userListProvider(_params));
   }
 
   void _confirmDelete(Map<String, dynamic> user) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber, color: AppColors.error, size: 24),
-            SizedBox(width: 12),
-            Text('Eliminar Usuario'),
-          ],
-        ),
-        content: Text(
-            '\u00bfEst\u00e1s seguro de eliminar a "${user['name'] ?? user['nombre'] ?? ''}"? Esta acci\u00f3n no se puede deshacer.'),
+        title: const Text('Eliminar Usuario'),
+        content: const Text('¿Estás seguro de eliminar este usuario? Esta acción es irreversible.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              final ok = await ref
-                  .read(userManagementControllerProvider)
-                  .deleteUser(user['id'].toString());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+              final navigator = Navigator.of(ctx);
+
+              final ok = await ref.read(userManagementControllerProvider).deleteUser(user['id'].toString());
+
+              navigator.pop();
               if (ok) {
                 ref.invalidate(userListProvider(_params));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Usuario eliminado'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Error al eliminar usuario'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: const Text('Eliminar'),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(children: List.generate(5, (index) => const Padding(padding: EdgeInsets.only(bottom: 12), child: SkeletonLoader(width: double.infinity, height: 60, borderRadius: 12)))),
     );
   }
 }

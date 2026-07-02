@@ -18,7 +18,7 @@ import '../../features/admin/presentation/screens/admin_dashboard_screen.dart';
 
 final _splashRoute = GoRoute(
   path: '/splash',
-  builder: (_, __) => const SplashScreen(),
+  builder: (context, state) => const SplashScreen(),
 );
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -28,14 +28,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
 
     redirect: (context, state) {
-      // Mientras auth se inicializa, mostrar splash
-      if (authState.isLoading) {
+      // Solo mostrar splash en la carga inicial (cuando no hay valor ni error todavía)
+      if (authState.isLoading && authState.value == null) {
         if (state.uri.path != '/splash') return '/splash';
         return null;
       }
 
       final isAuth = authState.value?.accessToken?.isNotEmpty ?? false;
-      final userRole = authState.value?.user?.role ?? '';
+      final userRole = authState.value?.user?.rol ?? '';
       
       final isGoingToLogin = state.uri.path == '/login';
       final isGoingToRegister = state.uri.path == '/register';

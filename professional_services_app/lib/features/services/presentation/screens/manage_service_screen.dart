@@ -146,7 +146,7 @@ class _ManageServiceScreenState extends ConsumerState<ManageServiceScreen> {
               const SizedBox(height: 16),
               AppTextField(controller: _descriptionController, label: 'Descripción', maxLines: 3),
               const SizedBox(height: 16),
-              SwitchListTile(title: const Text('Activo'), value: _isActive, activeColor: AppColors.primary, onChanged: isLoading ? null : (val) => setState(() => _isActive = val)),
+              SwitchListTile(title: const Text('Activo'), value: _isActive, activeThumbColor: AppColors.primary, onChanged: isLoading ? null : (val) => setState(() => _isActive = val)),
               const Divider(height: 48),
 
               Row(

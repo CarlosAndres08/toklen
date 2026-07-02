@@ -1,5 +1,5 @@
 class UserUpdateRequest {
-  final String? name;
+  final String? nombre;
   final String? email;
   final String? rol;
   final bool? isVerified;
@@ -9,7 +9,7 @@ class UserUpdateRequest {
   final String? apellido;
 
   UserUpdateRequest({
-    this.name,
+    this.nombre,
     this.email,
     this.rol,
     this.isVerified,
@@ -19,9 +19,12 @@ class UserUpdateRequest {
     this.apellido,
   });
 
+  // Alias para mantener compatibilidad si se recibe 'name'
+  String? get name => nombre;
+
   factory UserUpdateRequest.fromJson(Map<String, dynamic> json) =>
       UserUpdateRequest(
-        name: json['name'] as String?,
+        nombre: (json['nombre'] ?? json['name']) as String?,
         email: json['email'] as String?,
         rol: json['rol'] as String?,
         isVerified: json['is_verified'] as bool?,
@@ -32,7 +35,7 @@ class UserUpdateRequest {
       );
 
   Map<String, dynamic> toJson() => {
-        if (name != null) 'name': name,
+        if (nombre != null) 'nombre': nombre,
         if (email != null) 'email': email,
         if (rol != null) 'rol': rol,
         if (isVerified != null) 'is_verified': isVerified,

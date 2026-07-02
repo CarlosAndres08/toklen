@@ -1,13 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/config/app_config.dart';
+import '../../../../core/network/dio_client.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/models/provider_profile_model.dart';
 import '../../data/models/service_model.dart';
 import '../../data/repositories/service_repository.dart';
 
 final Provider<ServiceRepository> serviceRepositoryProvider = Provider<ServiceRepository>((Ref ref) {
-  return ServiceRepository(client: ref.watch(httpClientProvider), baseUrl: AppConfig.apiBaseUrl);
+  return ServiceRepository(client: ref.watch(dioProvider));
 });
 
 final AsyncNotifierProvider<ServiceListNotifier, List<ServiceModel>> serviceListProvider =
@@ -75,15 +75,17 @@ class ServiceListNotifier extends AsyncNotifier<List<ServiceModel>> {
 final AsyncNotifierProvider<CreateServiceController, void> createServiceControllerProvider = AsyncNotifierProvider(CreateServiceController.new);
 class CreateServiceController extends AsyncNotifier<void> {
   @override Future<void> build() async {}
-  Future<bool> executeCreate(ServiceCreateRequest request) async {
+  Future<ServiceModel?> executeCreate(ServiceCreateRequest request) async {
     state = const AsyncLoading();
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      await ref.read(serviceRepositoryProvider).createService(token: token, request: request);
+      final service = await ref.read(serviceRepositoryProvider).createService(request: request);
       state = const AsyncData(null);
       ref.invalidate(serviceListProvider);
-      return true;
-    } catch (e, st) { state = AsyncError('Error al publicar.', st); return false; }
+      return service;
+    } catch (e, st) {
+      state = AsyncError('Error al publicar.', st);
+      return null;
+    }
   }
 }
 
@@ -93,8 +95,7 @@ class UpdateServiceController extends AsyncNotifier<void> {
   Future<bool> executeUpdate({required String serviceId, required ServiceUpdateRequest request}) async {
     state = const AsyncLoading();
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      await ref.read(serviceRepositoryProvider).updateService(token: token, serviceId: serviceId, request: request);
+      await ref.read(serviceRepositoryProvider).updateService(serviceId: serviceId, request: request);
       state = const AsyncData(null);
       ref.invalidate(serviceListProvider);
       return true;
@@ -108,8 +109,7 @@ class UploadServiceImageController extends AsyncNotifier<void> {
   Future<bool> executeUpload({required String serviceId, required List<int> imageBytes, required String fileName}) async {
     state = const AsyncLoading();
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      await ref.read(serviceRepositoryProvider).uploadServiceImage(token: token, serviceId: serviceId, imageBytes: imageBytes, fileName: fileName);
+      await ref.read(serviceRepositoryProvider).uploadServiceImage(serviceId: serviceId, imageBytes: imageBytes, fileName: fileName);
       state = const AsyncData(null);
       ref.invalidate(serviceListProvider);
       return true;
@@ -124,8 +124,7 @@ class AvailabilityToggleController extends AsyncNotifier<void> {
   Future<bool> toggle() async {
     state = const AsyncLoading();
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      await ref.read(serviceRepositoryProvider).toggleAvailability(token: token);
+      await ref.read(serviceRepositoryProvider).toggleAvailability();
       state = const AsyncData(null);
       ref.invalidate(authControllerProvider);
       return true;
@@ -139,8 +138,7 @@ class DeleteServiceImageController extends AsyncNotifier<void> {
   Future<bool> executeDelete({required String serviceId, required String imageId}) async {
     state = const AsyncLoading();
     try {
-      final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-      await ref.read(serviceRepositoryProvider).deleteServiceImage(token: token, serviceId: serviceId, imageId: imageId);
+      await ref.read(serviceRepositoryProvider).deleteServiceImage(serviceId: serviceId, imageId: imageId);
       state = const AsyncData(null);
       ref.invalidate(serviceListProvider);
       return true;

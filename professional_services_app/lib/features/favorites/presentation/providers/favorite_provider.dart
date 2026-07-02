@@ -5,9 +5,8 @@ import '../../data/repositories/favorite_repository.dart';
 
 final favoriteIdsProvider = FutureProvider<List<String>>((ref) {
   final authState = ref.watch(authControllerProvider);
-  final token = authState.value?.accessToken ?? '';
-  if (token.isEmpty) return [];
-  return ref.read(favoriteRepositoryProvider).listFavoriteIds(token);
+  if (!authState.value!.isAuthenticated) return [];
+  return ref.read(favoriteRepositoryProvider).listFavoriteIds();
 });
 
 class FavoriteToggleState {
@@ -28,17 +27,12 @@ class FavoriteToggleNotifier extends Notifier<FavoriteToggleState> {
   FavoriteToggleState build() => const FavoriteToggleState();
 
   Future<bool> toggle(String serviceId, bool currentlyFavorited) async {
-    final token = ref.read(authControllerProvider).value?.accessToken ?? '';
-    if (token.isEmpty) {
-      state = state.copyWith(error: 'No hay sesión activa.');
-      return false;
-    }
     state = state.copyWith(isLoading: true, error: null);
     try {
       if (currentlyFavorited) {
-        await ref.read(favoriteRepositoryProvider).removeFavorite(token, serviceId);
+        await ref.read(favoriteRepositoryProvider).removeFavorite(serviceId);
       } else {
-        await ref.read(favoriteRepositoryProvider).addFavorite(token, serviceId);
+        await ref.read(favoriteRepositoryProvider).addFavorite(serviceId);
       }
       ref.invalidate(favoriteIdsProvider);
       state = state.copyWith(isLoading: false);

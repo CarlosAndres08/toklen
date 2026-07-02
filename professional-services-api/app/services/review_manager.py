@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 
 from app.models.booking import Booking, BookingStatus
 from app.models.review import Review
-from app.schemas.review import ReviewCreate, ReviewResponse
+from app.schemas.review import ReviewCreate, ReviewUpdate, ReviewResponse
 from app.schemas.user import UserResponse
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.review_repository import ReviewRepository
@@ -40,6 +40,20 @@ class ReviewAlreadyExistsError(ReviewManagerException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_400_BAD_REQUEST, detail="A review for this booking already exists"
+        )
+
+
+class ReviewNotOwnedError(ReviewManagerException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN, detail="You can only manage your own reviews"
+        )
+
+
+class ReviewNotFoundError(ReviewManagerException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Review not found"
         )
 
 
@@ -82,3 +96,28 @@ class ReviewManager:
         reviews = await self.review_repo.list_by_service_id(service_id)
         average_rating = await self.review_repo.get_average_rating_for_service(service_id)
         return [ReviewResponse.model_validate(review) for review in reviews], average_rating
+
+    async def update_review(
+        self, review_id: uuid.UUID, data: ReviewUpdate, current_user: UserResponse
+    ) -> ReviewResponse:
+        review = await self.review_repo.get_by_id(review_id)
+        if not review:
+            raise ReviewNotFoundError()
+
+        if review.booking.client_id != current_user.id:
+            raise ReviewNotOwnedError()
+
+        updated = await self.review_repo.update(review, data.model_dump(exclude_unset=True))
+        return ReviewResponse.model_validate(updated)
+
+    async def delete_review(
+        self, review_id: uuid.UUID, current_user: UserResponse
+    ) -> None:
+        review = await self.review_repo.get_by_id(review_id)
+        if not review:
+            raise ReviewNotFoundError()
+
+        if review.booking.client_id != current_user.id:
+            raise ReviewNotOwnedError()
+
+        await self.review_repo.delete(review)

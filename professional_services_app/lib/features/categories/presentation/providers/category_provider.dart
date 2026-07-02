@@ -1,15 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/config/app_config.dart';
-import '../../../auth/presentation/providers/auth_provider.dart'; // Importamos el httpClientProvider
+import '../../../../core/network/dio_client.dart';
 import '../../data/models/category_model.dart';
 import '../../data/repositories/category_repository.dart';
 
 // 1. Inyectamos el repositorio
 final Provider<CategoryRepository> categoryRepositoryProvider = Provider<CategoryRepository>((Ref ref) {
   return CategoryRepository(
-    client: ref.watch(httpClientProvider),
-    baseUrl: AppConfig.apiBaseUrl,
+    client: ref.watch(dioProvider),
   );
 });
 

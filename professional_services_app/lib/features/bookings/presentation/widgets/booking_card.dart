@@ -308,16 +308,18 @@ class BookingCard extends ConsumerWidget {
           left: 24, right: 24, top: 24,
         ),
         child: ReviewForm(
-          isLoading: ref.watch(createReviewControllerProvider).isLoading,
-          onSubmit: (req) async {
+          isLoading: ref.watch(reviewControllerProvider).isLoading,
+          onSubmit: (rating, comment) async {
             final request = ReviewCreateRequest(
               bookingId: booking.id,
-              rating: req.rating,
-              comment: req.comment,
+              rating: rating,
+              comment: comment,
             );
-            return ref
-                .read(createReviewControllerProvider.notifier)
-                .executeCreate(request);
+            return ref.read(reviewControllerProvider.notifier).executeCreate(
+                  request: request,
+                  serviceId: booking.serviceId,
+                  providerId: booking.providerId ?? '',
+                );
           },
         ),
       ),

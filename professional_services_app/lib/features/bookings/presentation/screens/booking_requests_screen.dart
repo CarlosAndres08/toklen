@@ -32,7 +32,7 @@ class _BookingRequestsScreenState extends ConsumerState<BookingRequestsScreen> {
         ref.watch(bookingRequestsProvider);
     
     final String userRole =
-        ref.watch(authControllerProvider).value?.user?.role ?? 'client';
+        ref.watch(authControllerProvider).value?.user?.rol ?? 'client';
 
     // Si no es proveedor, mostrar mensaje
     if (userRole != 'provider') {

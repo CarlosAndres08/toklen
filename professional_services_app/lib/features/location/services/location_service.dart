@@ -1,20 +1,17 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
-import '../../../core/config/app_config.dart';
+import '../../../core/network/dio_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../../services/presentation/providers/service_provider.dart';
 
 class LocationService {
-  const LocationService({required http.Client client, required String baseUrl})
-      : _client = client,
-        _baseUrl = baseUrl;
+  const LocationService({required Dio client})
+      : _client = client;
 
-  final http.Client _client;
-  final String _baseUrl;
+  final Dio _client;
 
   Future<Position?> getCurrentPosition() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -31,33 +28,26 @@ class LocationService {
   }
 
   Future<void> updateUserLocation({
-    required String token,
     required double latitude,
     required double longitude,
   }) async {
-    final Uri uri = Uri.parse('$_baseUrl/api/v1/users/me');
-    final http.Response response = await _client.put(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'latitude': latitude,
-        'longitude': longitude,
-      }),
-    );
-    if (response.statusCode >= 300) {
-      throw ApiException('Error al actualizar ubicación.', statusCode: response.statusCode);
+    try {
+      await _client.put(
+        '/api/v1/users/me',
+        data: {
+          'latitude': latitude,
+          'longitude': longitude,
+        },
+      );
+    } on DioException catch (e) {
+      throw ApiException('Error al actualizar ubicación.', statusCode: e.response?.statusCode);
     }
   }
 }
 
 final locationServiceProvider = Provider<LocationService>((ref) {
   return LocationService(
-    client: ref.watch(httpClientProvider),
-    baseUrl: AppConfig.apiBaseUrl,
+    client: ref.watch(dioProvider),
   );
 });
 
@@ -70,7 +60,6 @@ final locationControllerProvider = FutureProvider<void>((ref) async {
   if (position == null) return;
 
   await service.updateUserLocation(
-    token: authState.accessToken!,
     latitude: position.latitude,
     longitude: position.longitude,
   );

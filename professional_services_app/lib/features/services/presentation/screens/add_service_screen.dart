@@ -1,10 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../categories/presentation/providers/category_provider.dart';
-import '../../data/models/service_model.dart'; // Asegúrate de importar el modelo
+import '../../data/models/service_model.dart';
 import '../providers/service_provider.dart';
 
 class AddServiceScreen extends ConsumerStatefulWidget {
@@ -16,12 +19,14 @@ class AddServiceScreen extends ConsumerStatefulWidget {
 
 class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final ImagePicker _picker = ImagePicker();
   
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   
   String? _selectedCategoryId;
+  final List<XFile> _selectedImages = [];
 
   @override
   void dispose() {
@@ -29,6 +34,21 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
     _descriptionController.dispose();
     _priceController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImages() async {
+    final List<XFile> images = await _picker.pickMultiImage(imageQuality: 70);
+    if (images.isNotEmpty) {
+      setState(() {
+        _selectedImages.addAll(images);
+      });
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
   }
 
   Future<void> _submitForm() async {
@@ -40,8 +60,10 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
       return;
     }
 
-    // CORRECCIÓN: Se asegura que el argumento pasado a executeCreate sea del tipo esperado ServiceCreateRequest
-    final bool success = await ref
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final createdService = await ref
     .read(createServiceControllerProvider.notifier)
     .executeCreate(
       ServiceCreateRequest(
@@ -52,14 +74,25 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
       ),
     );
     
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+    if (createdService != null && mounted) {
+      if (_selectedImages.isNotEmpty) {
+        for (var image in _selectedImages) {
+          final bytes = await image.readAsBytes();
+          await ref.read(uploadServiceImageControllerProvider.notifier).executeUpload(
+            serviceId: createdService.id,
+            imageBytes: bytes,
+            fileName: image.name,
+          );
+        }
+      }
+
+      messenger.showSnackBar(
         const SnackBar(content: Text('¡Servicio publicado con éxito!'), backgroundColor: AppColors.success),
       );
-      Navigator.pop(context);
+      navigator.pop();
     } else if (mounted) {
       final errorState = ref.read(createServiceControllerProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(errorState.error?.toString() ?? 'Error al crear el servicio.'),
           backgroundColor: AppColors.error,
@@ -71,8 +104,12 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
   @override
   Widget build(BuildContext context) {
     final AsyncValue<void> createStatus = ref.watch(createServiceControllerProvider);
-    final bool isLoading = createStatus.isLoading;
+    final uploadStatus = ref.watch(uploadServiceImageControllerProvider);
+    final bool isLoading = createStatus.isLoading || uploadStatus.isLoading;
     final categoriesAsync = ref.watch(categoryListProvider);
+
+    final authState = ref.watch(authControllerProvider).value;
+    final isVerified = authState?.user?.isVerified ?? false;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -89,6 +126,29 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!isVerified) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Tu cuenta aún no está verificada. Puedes publicar servicios, pero aparecerán con menor prioridad hasta que un administrador valide tu perfil.',
+                          style: TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
               const Text(
                 'Detalles de tu servicio',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
@@ -113,7 +173,7 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
                 error: (err, stack) => Text('Error al cargar categorías: $err', style: const TextStyle(color: AppColors.error)),
                 data: (categories) {
                   return DropdownButtonFormField<String>(
-                    value: _selectedCategoryId,
+                    initialValue: _selectedCategoryId,
                     decoration: const InputDecoration(
                       labelText: 'Categoría',
                       border: OutlineInputBorder(),
@@ -164,6 +224,58 @@ class _AddServiceScreenState extends ConsumerState<AddServiceScreen> {
                 validator: (value) => value == null || value.trim().length < 10 
                     ? 'Sé un poco más específico (mínimo 10 letras)' 
                     : null,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Fotos del servicio',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 100,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    InkWell(
+                      onTap: isLoading ? null : _pickImages,
+                      child: Container(
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                        ),
+                        child: const Icon(Icons.add_a_photo, color: AppColors.primary),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ..._selectedImages.asMap().entries.map((entry) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(File(entry.value.path), width: 100, height: 100, fit: BoxFit.cover),
+                            ),
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: InkWell(
+                                onTap: () => _removeImage(entry.key),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 16),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
               const SizedBox(height: 32),
               PrimaryButton(

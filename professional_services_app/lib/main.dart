@@ -22,7 +22,6 @@ class MyApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final authState = ref.watch(authControllerProvider);
 
     ref.listen(authControllerProvider, (prev, next) {
       if (prev?.value == null && next.value != null) {

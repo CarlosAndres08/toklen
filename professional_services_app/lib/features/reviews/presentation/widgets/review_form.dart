@@ -3,16 +3,19 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
-import '../../data/models/review_model.dart';
 
 class ReviewForm extends StatefulWidget {
   const ReviewForm({
     required this.onSubmit,
+    this.initialRating = 0,
+    this.initialComment = '',
     this.isLoading = false,
     super.key,
   });
 
-  final Future<bool> Function(ReviewCreateRequest request) onSubmit;
+  final Future<bool> Function(int rating, String? comment) onSubmit;
+  final int initialRating;
+  final String initialComment;
   final bool isLoading;
 
   @override
@@ -21,8 +24,15 @@ class ReviewForm extends StatefulWidget {
 
 class _ReviewFormState extends State<ReviewForm> {
   final _formKey = GlobalKey<FormState>();
-  final _commentController = TextEditingController();
-  int _rating = 0;
+  late final TextEditingController _commentController;
+  late int _rating;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController(text: widget.initialComment);
+    _rating = widget.initialRating;
+  }
 
   @override
   void dispose() {
@@ -42,22 +52,12 @@ class _ReviewFormState extends State<ReviewForm> {
     }
     if (!_formKey.currentState!.validate()) return;
 
-    final success = await widget.onSubmit(
-      ReviewCreateRequest(
-        bookingId: '', // will be set by parent
-        rating: _rating,
-        comment: _commentController.text.trim().isNotEmpty
-            ? _commentController.text.trim()
-            : null,
-      ),
+    await widget.onSubmit(
+      _rating,
+      _commentController.text.trim().isNotEmpty
+          ? _commentController.text.trim()
+          : null,
     );
-
-    if (success && mounted) {
-      setState(() {
-        _rating = 0;
-        _commentController.clear();
-      });
-    }
   }
 
   @override

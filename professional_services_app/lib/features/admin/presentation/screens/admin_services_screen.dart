@@ -86,9 +86,9 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                           dataRowMaxHeight: 72,
                           columnSpacing: 24,
                           columns: const [
-                            DataColumn(label: Text('T\u00edtulo')),
+                            DataColumn(label: Text('Título')),
                             DataColumn(label: Text('Proveedor')),
-                            DataColumn(label: Text('Categor\u00eda')),
+                            DataColumn(label: Text('Categoría')),
                             DataColumn(label: Text('Precio')),
                             DataColumn(label: Text('Activo')),
                             DataColumn(label: Text('Acciones')),
@@ -141,7 +141,9 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
           const Spacer(),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(serviceListProvider),
+            onPressed: () {
+              if (mounted) ref.invalidate(serviceListProvider);
+            },
             tooltip: 'Actualizar',
           ),
         ],
@@ -181,7 +183,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Text('S\u00ed',
+                  child: const Text('Sí',
                       style: TextStyle(
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
@@ -330,20 +332,20 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
     );
   }
 
-  void _editServiceDialog(Map<String, dynamic> service) {
+  void _editServiceDialog(Map<String, dynamic> serviceMap) {
     final titleController =
-        TextEditingController(text: service['title']?.toString() ?? '');
+        TextEditingController(text: serviceMap['title']?.toString() ?? '');
     final descController =
-        TextEditingController(text: service['description']?.toString() ?? '');
+        TextEditingController(text: serviceMap['description']?.toString() ?? '');
     final priceController =
-        TextEditingController(text: service['price']?.toString() ?? '');
+        TextEditingController(text: serviceMap['price']?.toString() ?? '');
     String? selectedCategory;
-    var isActive = service['is_active'] != false;
+    var isActive = serviceMap['is_active'] != false;
     final categoriesAsync = ref.read(categoryListProvider);
 
     categoriesAsync.whenData((categories) {
-      final currentCat = service['category_id']?.toString() ??
-          service['categoria_id']?.toString();
+      final currentCat = serviceMap['category_id']?.toString() ??
+          serviceMap['categoria_id']?.toString();
       if (categories.any(
           (c) => c['id'].toString() == currentCat)) {
         selectedCategory = currentCat;
@@ -364,7 +366,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                 TextField(
                   controller: titleController,
                   decoration: const InputDecoration(
-                    labelText: 'T\u00edtulo',
+                    labelText: 'Título',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -373,7 +375,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                 TextField(
                   controller: descController,
                   decoration: const InputDecoration(
-                    labelText: 'Descripci\u00f3n',
+                    labelText: 'Descripción',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -393,9 +395,9 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                 const SizedBox(height: 12),
                 categoriesAsync.when(
                   data: (categories) => DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: selectedCategory,
                     decoration: const InputDecoration(
-                      labelText: 'Categor\u00eda',
+                      labelText: 'Categoría',
                       border: OutlineInputBorder(),
                       isDense: true,
                     ),
@@ -418,7 +420,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                       child: Center(
                           child:
                               CircularProgressIndicator(strokeWidth: 2))),
-                  error: (_, __) => const Text('Error al cargar categor\u00edas'),
+                  error: (_, __) => const Text('Error al cargar categorías'),
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
@@ -447,21 +449,25 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
                 if (selectedCategory != null) {
                   data['category_id'] = selectedCategory;
                 }
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(ctx);
+
                 final ok = await ref
                     .read(serviceManagementControllerProvider)
                     .updateService(
-                        service['id'].toString(), data);
-                if (!context.mounted) return;
-                Navigator.pop(ctx);
+                        serviceMap['id'].toString(), data);
+                if (!mounted) return;
+
+                navigator.pop();
                 if (ok) {
                   ref.invalidate(serviceListProvider);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                         content: Text('Servicio actualizado'),
                         backgroundColor: Colors.green),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
                         content: Text('Error al actualizar servicio'),
                         backgroundColor: Colors.red),
@@ -476,16 +482,16 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
     );
   }
 
-  void _approveService(Map<String, dynamic> service) {
+  void _approveService(Map<String, dynamic> serviceMap) {
     final title =
-        service['title']?.toString() ?? service['titulo']?.toString() ?? '';
+        serviceMap['title']?.toString() ?? serviceMap['titulo']?.toString() ?? '';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Aprobar Servicio'),
-        content: Text('\u00bfAprobar "$title"?'),
+        content: Text('¿Aprobar "$title"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -493,20 +499,24 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final nav = Navigator.of(ctx);
+
               final ok = await ref
                   .read(serviceManagementControllerProvider)
-                  .approveService(service['id'].toString());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+                  .approveService(serviceMap['id'].toString());
+              if (!mounted) return;
+
+              nav.pop();
               if (ok) {
                 ref.invalidate(serviceListProvider);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                       content: Text('Servicio aprobado'),
                       backgroundColor: Colors.green),
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                       content: Text('Error al aprobar servicio'),
                       backgroundColor: Colors.red),
@@ -524,10 +534,10 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
     );
   }
 
-  void _rejectService(Map<String, dynamic> service) {
+  void _rejectService(Map<String, dynamic> serviceMap) {
     final reasonController = TextEditingController();
     final title =
-        service['title']?.toString() ?? service['titulo']?.toString() ?? '';
+        serviceMap['title']?.toString() ?? serviceMap['titulo']?.toString() ?? '';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -558,21 +568,25 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
           ElevatedButton(
             onPressed: () async {
               if (reasonController.text.trim().isEmpty) return;
+              final messenger = ScaffoldMessenger.of(context);
+              final nav = Navigator.of(ctx);
+
               final ok = await ref
                   .read(serviceManagementControllerProvider)
-                  .rejectService(service['id'].toString(),
+                    .rejectService(serviceMap['id'].toString(),
                       reasonController.text.trim());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+              if (!mounted) return;
+
+              nav.pop();
               if (ok) {
                 ref.invalidate(serviceListProvider);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                       content: Text('Servicio rechazado'),
                       backgroundColor: Colors.orange),
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                       content: Text('Error al rechazar servicio'),
                       backgroundColor: Colors.red),
@@ -590,9 +604,9 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
     );
   }
 
-  void _confirmDelete(Map<String, dynamic> service) {
+  void _confirmDelete(Map<String, dynamic> serviceMap) {
     final title =
-        service['title']?.toString() ?? service['titulo']?.toString() ?? '';
+        serviceMap['title']?.toString() ?? serviceMap['titulo']?.toString() ?? '';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -606,7 +620,7 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
           ],
         ),
         content: Text(
-            '\u00bfEst\u00e1s seguro de eliminar "$title"? Esta acci\u00f3n no se puede deshacer.'),
+            '¿Estás seguro de eliminar "$title"? Esta acción no se puede deshacer.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -614,21 +628,25 @@ class _AdminServicesScreenState extends ConsumerState<AdminServicesScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final nav = Navigator.of(ctx);
+
               final ok = await ref
                   .read(serviceManagementControllerProvider)
-                  .deleteService(service['id'].toString());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+                  .deleteService(serviceMap['id'].toString());
+              if (!mounted) return;
+
+              nav.pop();
               if (ok) {
                 ref.invalidate(serviceListProvider);
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Servicio eliminado'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('Error al eliminar servicio'),
                     backgroundColor: Colors.red,

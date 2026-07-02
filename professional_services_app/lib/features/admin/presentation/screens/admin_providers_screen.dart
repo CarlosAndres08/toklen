@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/skeleton_loader.dart';
 import '../providers/user_management_provider.dart';
 import '../providers/provider_verification_provider.dart';
 
@@ -16,7 +18,7 @@ class AdminProvidersScreen extends ConsumerStatefulWidget {
 class _AdminProvidersScreenState extends ConsumerState<AdminProvidersScreen> {
   @override
   Widget build(BuildContext context) {
-    final params = const UserListParams(rol: 'provider', pageSize: 100);
+    const params = UserListParams(rol: 'provider', pageSize: 100);
     final providersAsync = ref.watch(userListProvider(params));
 
     return Scaffold(
@@ -24,100 +26,45 @@ class _AdminProvidersScreenState extends ConsumerState<AdminProvidersScreen> {
       body: Column(
         children: [
           _buildHeader(),
-          providersAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text('Error: $e'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => ref.invalidate(userListProvider(params)),
-                    child: const Text('Reintentar'),
-                  ),
-                ],
+          Expanded(
+            child: providersAsync.when(
+              loading: () => _buildSkeleton(),
+              error: (e, _) => EmptyState(
+                title: 'Error al cargar proveedores',
+                message: e.toString(),
+                icon: Icons.error_outline,
+                actionLabel: 'Reintentar',
+                onActionPressed: () => ref.invalidate(userListProvider(params)),
               ),
-            ),
-            data: (providers) {
-              final verifiedCount =
-                  providers.where((u) => u['is_verified'] == true).length;
-              final pendingCount =
-                  providers.where((u) => u['is_verified'] != true).length;
+              data: (providers) {
+                if (providers.isEmpty) {
+                  return const EmptyState(
+                    title: 'Sin proveedores',
+                    message: 'No hay proveedores registrados en el sistema.',
+                    icon: Icons.work_off_outlined,
+                  );
+                }
 
-              return Column(
-                children: [
-                  _buildStatsBar(
-                      providers.length, verifiedCount, pendingCount),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: providers.isEmpty
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.work_outline,
-                                    size: 64, color: Colors.grey),
-                                SizedBox(height: 16),
-                                Text('No hay proveedores registrados',
-                                    style: TextStyle(
-                                        color: Colors.grey, fontSize: 16)),
-                              ],
-                            ),
-                          )
-                        : RefreshIndicator(
-                            onRefresh: () async =>
-                                ref.invalidate(userListProvider(params)),
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                if (constraints.maxWidth < 700) {
-                                  return ListView.builder(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 16),
-                                    itemCount: providers.length,
-                                    itemBuilder: (context, index) {
-                                      final provider =
-                                          providers[index]
-                                              as Map<String, dynamic>;
-                                      return _buildProviderCard(provider);
-                                    },
-                                  );
-                                }
-                                return SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: DataTable(
-                                    headingRowColor:
-                                        WidgetStateProperty.all(
-                                            AppColors.surface),
-                                     dataRowMinHeight: 48,
-                                     dataRowMaxHeight: 72,
-                                    columnSpacing: 24,
-                                    columns: const [
-                                      DataColumn(label: Text('Avatar')),
-                                      DataColumn(label: Text('Nombre')),
-                                      DataColumn(label: Text('Email')),
-                                      DataColumn(label: Text('Verificado')),
-                                      DataColumn(label: Text('Documentos')),
-                                      DataColumn(
-                                          label: Text('Total Servicios')),
-                                      DataColumn(label: Text('Acciones')),
-                                    ],
-                                    rows: providers.map((p) {
-                                      final provider =
-                                          p as Map<String, dynamic>;
-                                      return _buildProviderRow(provider);
-                                    }).toList(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                  ),
-                ],
-              );
-            },
+                final verifiedCount = providers.where((u) => u['is_verified'] == true).length;
+                final pendingCount = providers.where((u) => u['is_verified'] != true).length;
+
+                return Column(
+                  children: [
+                    _buildStatsBar(providers.length, verifiedCount, pendingCount),
+                    const SizedBox(height: 24),
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () async {
+                          ref.invalidate(userListProvider(params));
+                          ref.invalidate(pendingVerificationsProvider);
+                        },
+                        child: _buildTableOrList(providers),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -126,40 +73,31 @@ class _AdminProvidersScreenState extends ConsumerState<AdminProvidersScreen> {
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      padding: const EdgeInsets.all(24),
       child: Row(
         children: [
-          const Icon(Icons.work, color: AppColors.primary, size: 28),
-          const SizedBox(width: 12),
-          Column(
+          const Icon(Icons.work_rounded, color: AppColors.primary, size: 32),
+          const SizedBox(width: 16),
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Gesti\u00f3n de Proveedores',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+              Text(
+                'Gestión de Proveedores',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5),
               ),
               Text(
-                'Administra y verifica proveedores',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary.withValues(alpha: 0.8),
-                ),
+                'Administra y verifica la identidad de los profesionales',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
             ],
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          IconButton.filledTonal(
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
-              ref.invalidate(userListProvider(
-                  const UserListParams(rol: 'provider', pageSize: 100)));
+              ref.invalidate(userListProvider(const UserListParams(rol: 'provider', pageSize: 100)));
               ref.invalidate(pendingVerificationsProvider);
             },
-            tooltip: 'Actualizar',
           ),
         ],
       ),
@@ -167,122 +105,106 @@ class _AdminProvidersScreenState extends ConsumerState<AdminProvidersScreen> {
   }
 
   Widget _buildStatsBar(int total, int verified, int pending) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _statItem('Total', total.toString(), AppColors.primary),
-          Container(
-              width: 1, height: 32, color: AppColors.border),
-          _statItem('Verificados', verified.toString(), Colors.green),
-          Container(
-              width: 1, height: 32, color: AppColors.border),
-          _statItem('Pendientes', pending.toString(), Colors.orange),
+          _statMiniCard('Total', total.toString(), AppColors.primary),
+          const SizedBox(width: 16),
+          _statMiniCard('Verificados', verified.toString(), Colors.green),
+          const SizedBox(width: 16),
+          _statMiniCard('Pendientes', pending.toString(), Colors.orange),
         ],
       ),
     );
   }
 
-  Widget _statItem(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color)),
-        Text(label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey)),
-      ],
+  Widget _statMiniCard(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: color)),
+            Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
     );
   }
 
+  Widget _buildTableOrList(List<dynamic> providers) {
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < 800) {
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          itemCount: providers.length,
+          itemBuilder: (context, index) => _buildProviderMobileCard(providers[index]),
+        );
+      }
+      return SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: DataTable(
+            headingRowHeight: 56,
+            dataRowMaxHeight: 72,
+            dividerThickness: 1,
+            columns: const [
+              DataColumn(label: Text('Proveedor', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Estado', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Servicios', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w700))),
+            ],
+            rows: providers.map((p) => _buildProviderRow(p)).toList(),
+          ),
+        ),
+      );
+    });
+  }
+
   DataRow _buildProviderRow(Map<String, dynamic> provider) {
-    final name =
-        provider['name']?.toString() ?? provider['nombre']?.toString() ?? '';
-    final email = provider['email']?.toString() ?? '';
+    final name = provider['nombre']?.toString() ?? provider['name']?.toString() ?? 'Profesional';
     final isVerified = provider['is_verified'] == true;
-    final documents = provider['documents'] as List<dynamic>? ?? [];
-    final totalServices = provider['total_services'] as int? ?? 0;
 
     return DataRow(
       cells: [
-        DataCell(
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.blue.withValues(alpha: 0.15),
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'P',
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, color: Colors.blue),
-            ),
-          ),
-        ),
-        DataCell(Text(name,
-            style: const TextStyle(fontWeight: FontWeight.w500))),
-        DataCell(Text(email, style: const TextStyle(fontSize: 13))),
-        DataCell(
-          isVerified
-              ? Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('S\u00ed',
-                      style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
-                )
-              : Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('No',
-                      style: TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
-                ),
-        ),
-        DataCell(Text('${documents.length} docs')),
-        DataCell(Text('$totalServices')),
         DataCell(Row(
-          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.primaryContainer,
+              child: Text(name[0].toUpperCase(), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(width: 12),
+            Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        )),
+        DataCell(Text(provider['email']?.toString() ?? '-')),
+        DataCell(_buildStatusBadge(isVerified)),
+        DataCell(Text('${provider['total_services'] ?? 0}')),
+        DataCell(Row(
           children: [
             if (!isVerified)
               IconButton(
-                onPressed: () => _approveVerification(provider),
-                icon: const Icon(Icons.verified_outlined,
-                    color: Colors.green, size: 20),
-                tooltip: 'Aprobar verificaci\u00f3n',
-                visualDensity: VisualDensity.compact,
+                onPressed: () => _showVerifyDialog(provider),
+                icon: const Icon(Icons.verified_user_rounded, color: Colors.green),
+                tooltip: 'Verificar',
               ),
             IconButton(
-              onPressed: () => _showEditDialog(provider),
-              icon: const Icon(Icons.edit_outlined,
-                  color: AppColors.primary, size: 20),
-              tooltip: 'Editar',
-              visualDensity: VisualDensity.compact,
-            ),
-            IconButton(
               onPressed: () => _confirmDelete(provider),
-              icon: const Icon(Icons.delete_outline,
-                  color: AppColors.error, size: 20),
-              tooltip: 'Eliminar',
-              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
             ),
           ],
         )),
@@ -290,181 +212,121 @@ class _AdminProvidersScreenState extends ConsumerState<AdminProvidersScreen> {
     );
   }
 
-  Widget _buildProviderCard(Map<String, dynamic> provider) {
-    final name =
-        provider['name']?.toString() ?? provider['nombre']?.toString() ?? '';
-    final email = provider['email']?.toString() ?? '';
+  Widget _buildStatusBadge(bool verified) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: verified ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        verified ? 'VERIFICADO' : 'PENDIENTE',
+        style: TextStyle(color: verified ? Colors.green : Colors.orange, fontWeight: FontWeight.w800, fontSize: 10),
+      ),
+    );
+  }
+
+  Widget _buildProviderMobileCard(Map<String, dynamic> provider) {
+    final name = provider['nombre']?.toString() ?? provider['name']?.toString() ?? 'Profesional';
     final isVerified = provider['is_verified'] == true;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: CircleAvatar(
+          backgroundColor: AppColors.primaryContainer,
+          child: Text(name[0].toUpperCase(), style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+        ),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.blue.withValues(alpha: 0.15),
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : 'P',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.blue),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  Text(email,
-                      style: const TextStyle(
-                          fontSize: 12, color: Colors.grey)),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isVerified
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          isVerified ? 'VERIFICADO' : 'PENDIENTE',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: isVerified ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert, size: 20),
-              onSelected: (v) {
-                if (v == 'verify' && !isVerified) {
-                  _approveVerification(provider);
-                }
-                if (v == 'edit') _showEditDialog(provider);
-                if (v == 'delete') _confirmDelete(provider);
-              },
-              itemBuilder: (_) => [
-                if (!isVerified)
-                  const PopupMenuItem(
-                      value: 'verify', child: Text('Verificar')),
-                const PopupMenuItem(value: 'edit', child: Text('Editar')),
-                const PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Eliminar',
-                        style: TextStyle(color: Colors.red))),
-              ],
-            ),
+            Text(provider['email']?.toString() ?? ''),
+            const SizedBox(height: 8),
+            _buildStatusBadge(isVerified),
           ],
+        ),
+        trailing: PopupMenuButton(
+          itemBuilder: (context) => [
+            if (!isVerified) const PopupMenuItem(value: 'verify', child: Text('Verificar')),
+            const PopupMenuItem(value: 'delete', child: Text('Eliminar', style: TextStyle(color: AppColors.error))),
+          ],
+          onSelected: (val) {
+            if (val == 'verify') _showVerifyDialog(provider);
+            if (val == 'delete') _confirmDelete(provider);
+          },
         ),
       ),
     );
   }
 
-  void _approveVerification(Map<String, dynamic> provider) {
+  void _showVerifyDialog(Map<String, dynamic> provider) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Aprobar Verificaci\u00f3n'),
-        content: Text(
-            '\u00bfAprobar la verificaci\u00f3n de "${provider['name'] ?? provider['nombre'] ?? ''}"?'),
+        title: const Text('Verificar Proveedor'),
+        content: Text('¿Deseas aprobar la verificación de identidad para ${provider['nombre'] ?? provider['name']}?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              final ok = await ref
-                  .read(verificationControllerProvider)
-                  .approveVerification(provider['id'].toString());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
+              final ok = await ref.read(verificationControllerProvider).approveVerification(provider['id'].toString());
+              if (!mounted) return;
+
+              navigator.pop();
               if (ok) {
-                ref.invalidate(userListProvider(
-                    const UserListParams(rol: 'provider', pageSize: 100)));
-                ref.invalidate(pendingVerificationsProvider);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Proveedor verificado'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                ref.invalidate(userListProvider(const UserListParams(rol: 'provider', pageSize: 100)));
+                    messenger.showSnackBar(const SnackBar(content: Text('Proveedor verificado correctamente'), backgroundColor: Colors.green));
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             child: const Text('Aprobar'),
+          ),
+          OutlinedButton(
+            onPressed: () => _showRejectDialog(provider, ctx),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Rechazar'),
           ),
         ],
       ),
     );
   }
 
-  void _showEditDialog(Map<String, dynamic> provider) {
-    final nameController =
-        TextEditingController(text: provider['name']?.toString() ?? '');
-    final emailController =
-        TextEditingController(text: provider['email']?.toString() ?? '');
-
+  void _showRejectDialog(Map<String, dynamic> provider, BuildContext verifyCtx) {
+    final reasonController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Editar Proveedor'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nombre',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ],
+        title: const Text('Rechazar Verificación'),
+        content: TextField(
+          controller: reasonController,
+          decoration: const InputDecoration(labelText: 'Motivo del rechazo', hintText: 'Ej. Documento ilegible'),
+          maxLines: 3,
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Proveedor actualizado')),
-              );
+            onPressed: () async {
+              if (reasonController.text.isEmpty) return;
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
+              final verifyNavigator = Navigator.of(verifyCtx);
+
+              final ok = await ref.read(verificationControllerProvider).rejectVerification(provider['id'].toString(), reasonController.text);
+              if (!mounted) return;
+
+              navigator.pop();
+              verifyNavigator.pop();
+              if (ok) {
+                ref.invalidate(userListProvider(const UserListParams(rol: 'provider', pageSize: 100)));
+                messenger.showSnackBar(const SnackBar(content: Text('Verificación rechazada'), backgroundColor: AppColors.error));
+              }
             },
-            child: const Text('Guardar'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: const Text('Rechazar'),
           ),
         ],
       ),
@@ -472,59 +334,43 @@ class _AdminProvidersScreenState extends ConsumerState<AdminProvidersScreen> {
   }
 
   void _confirmDelete(Map<String, dynamic> provider) {
-    final name =
-        provider['name']?.toString() ?? provider['nombre']?.toString() ?? '';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber, color: AppColors.error, size: 24),
-            SizedBox(width: 12),
-            Text('Eliminar Proveedor'),
-          ],
-        ),
-        content: Text(
-            '\u00bfEst\u00e1s seguro de eliminar a "$name"? Esta acci\u00f3n no se puede deshacer.'),
+        title: const Text('Eliminar Proveedor'),
+        content: const Text('¿Estás seguro? Esta acción eliminará al proveedor y todos sus servicios permanentemente.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           ElevatedButton(
             onPressed: () async {
-              final ok = await ref
-                  .read(userManagementControllerProvider)
-                  .deleteUser(provider['id'].toString());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
+
+              final ok = await ref.read(userManagementControllerProvider).deleteUser(provider['id'].toString());
+              if (!mounted) return;
+
+              navigator.pop();
               if (ok) {
-                ref.invalidate(userListProvider(
-                    const UserListParams(rol: 'provider', pageSize: 100)));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Proveedor eliminado'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Error al eliminar proveedor'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                ref.invalidate(userListProvider(const UserListParams(rol: 'provider', pageSize: 100)));
+                messenger.showSnackBar(const SnackBar(content: Text('Proveedor eliminado')));
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: const Text('Eliminar'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: List.generate(5, (index) => const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: SkeletonLoader(width: double.infinity, height: 60, borderRadius: 12),
+        )),
       ),
     );
   }

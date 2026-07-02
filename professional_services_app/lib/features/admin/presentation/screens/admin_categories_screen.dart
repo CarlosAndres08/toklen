@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/repositories/admin_repository.dart';
 import '../providers/category_management_provider.dart';
+import '../../../categories/presentation/providers/category_provider.dart' as user_cat;
 import '../widgets/category_card.dart';
 
 class AdminCategoriesScreen extends ConsumerStatefulWidget {
@@ -58,7 +59,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                         Icon(Icons.category_outlined,
                             size: 64, color: Colors.grey),
                         SizedBox(height: 16),
-                        Text('No hay categor\u00edas',
+                        Text('No hay categorías',
                             style: TextStyle(
                                 color: Colors.grey, fontSize: 16)),
                       ],
@@ -87,14 +88,14 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                         ),
                         itemCount: categories.length,
                         itemBuilder: (context, index) {
-                          final cat =
+                          final categoryMap =
                               categories[index] as Map<String, dynamic>;
                           return CategoryCard(
-                            category: cat,
+                            category: categoryMap,
                             onEdit: () =>
-                                _editCategoryDialog(context, cat),
+                                _editCategoryDialog(context, categoryMap),
                             onDelete: () =>
-                                _confirmDeleteCategory(cat),
+                                _confirmDeleteCategory(categoryMap),
                           );
                         },
                       );
@@ -120,7 +121,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Categor\u00edas',
+                'Categorías',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -128,7 +129,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                 ),
               ),
               Text(
-                'Gestiona las categor\u00edas del sistema',
+                'Gestiona las categorías del sistema',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary.withValues(alpha: 0.8),
@@ -145,7 +146,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
             onPressed: () => _editCategoryDialog(context, null),
-            tooltip: 'Nueva categor\u00eda',
+            tooltip: 'Nueva categoría',
           ),
         ],
       ),
@@ -153,6 +154,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
   }
 
   Future<String?> _pickAndUploadImage() async {
+    if (!mounted) return null;
     try {
       final file = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -161,6 +163,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
       );
       if (file == null) return null;
 
+      if (!mounted) return null;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Subiendo imagen...')),
       );
@@ -169,6 +172,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
       final url = await repository.uploadFile(file.path);
       return url;
     } on Exception catch (e) {
+      if (!mounted) return null;
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -181,26 +185,26 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
   }
 
   void _editCategoryDialog(
-      BuildContext context, Map<String, dynamic>? cat) {
+      BuildContext context, Map<String, dynamic>? categoryMap) {
     final nameController =
-        TextEditingController(text: cat?['name']?.toString() ?? '');
+        TextEditingController(text: categoryMap?['name']?.toString() ?? '');
     final descController =
-        TextEditingController(text: cat?['description']?.toString() ?? '');
+        TextEditingController(text: categoryMap?['description']?.toString() ?? '');
     final slugController =
-        TextEditingController(text: cat?['slug']?.toString() ?? '');
+        TextEditingController(text: categoryMap?['slug']?.toString() ?? '');
     String? existingImage =
-        cat?['image']?.toString() ?? cat?['imagen']?.toString();
+        categoryMap?['image_url']?.toString() ?? categoryMap?['image']?.toString() ?? categoryMap?['imagen']?.toString();
     String? newImageUrl;
     bool isUploading = false;
-    final isNew = cat == null;
+    final isNew = categoryMap == null;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
+        builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16)),
-          title: Text(isNew ? 'Nueva Categor\u00eda' : 'Editar Categor\u00eda'),
+          title: Text(isNew ? 'Nueva Categoría' : 'Editar Categoría'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -227,7 +231,7 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                 TextField(
                   controller: descController,
                   decoration: const InputDecoration(
-                    labelText: 'Descripci\u00f3n',
+                    labelText: 'Descripción',
                     border: OutlineInputBorder(),
                     isDense: true,
                   ),
@@ -245,12 +249,12 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                       height: 120,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        height: 120,
-                        color: Colors.grey.shade200,
-                        child: const Center(
-                            child: Icon(Icons.broken_image)),
-                      ),
+      errorBuilder: (context, error, stackTrace) => Container(
+        height: 120,
+        color: Colors.grey.shade200,
+        child: const Center(
+            child: Icon(Icons.broken_image)),
+      ),
                     ),
                   ),
                 const SizedBox(height: 8),
@@ -298,23 +302,31 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => Navigator.pop(context),
               child: const Text('Cancelar'),
             ),
             ElevatedButton.icon(
               onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
+                final String name = nameController.text.trim();
+                if (name.isEmpty) return;
 
                 final data = <String, dynamic>{
-                  'name': nameController.text.trim(),
+                  'name': name,
                   'description': descController.text.trim(),
                 };
                 if (slugController.text.trim().isNotEmpty) {
                   data['slug'] = slugController.text.trim();
                 }
+
+                // 🔥 INCIDENCIA 3: Usar image_url para el backend
                 if (newImageUrl != null) {
-                  data['image'] = newImageUrl;
+                  data['image_url'] = newImageUrl;
+                } else if (existingImage != null) {
+                  data['image_url'] = existingImage;
                 }
+
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
 
                 bool ok;
                 if (isNew) {
@@ -324,32 +336,30 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
                 } else {
                   ok = await ref
                       .read(categoryManagementControllerProvider)
-                      .updateCategory(cat['id'].toString(), data);
-
-                  if (ok && newImageUrl != null) {
-                    await ref
-                        .read(categoryManagementControllerProvider)
-                        .uploadCategoryImage(
-                            cat['id'].toString(), newImageUrl!);
-                  }
+                      .updateCategory(categoryMap['id'].toString(), data);
                 }
 
-                if (!context.mounted) return;
-                Navigator.pop(ctx);
+                if (!mounted) return;
+
+                navigator.pop();
+
                 if (ok) {
+                  // 🔥 INCIDENCIA 5: Invalidar caché de catálogo para proveedores/clientes
                   ref.invalidate(categoryListProvider);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ref.invalidate(user_cat.categoryListProvider);
+
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text(isNew
-                          ? 'Categor\u00eda creada'
-                          : 'Categor\u00eda actualizada'),
+                          ? 'Categoría creada'
+                          : 'Categoría actualizada'),
                       backgroundColor: Colors.green,
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  messenger.showSnackBar(
                     const SnackBar(
-                      content: Text('Error al guardar categor\u00eda'),
+                      content: Text('Error al guardar categoría'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -364,8 +374,8 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
     );
   }
 
-  void _confirmDeleteCategory(Map<String, dynamic> cat) {
-    final name = cat['name']?.toString() ?? cat['nombre']?.toString() ?? '';
+  void _confirmDeleteCategory(Map<String, dynamic> categoryMap) {
+    final name = categoryMap['name']?.toString() ?? categoryMap['nombre']?.toString() ?? '';
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -375,11 +385,11 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
           children: [
             Icon(Icons.warning_amber, color: AppColors.error, size: 24),
             SizedBox(width: 12),
-            Text('Eliminar Categor\u00eda'),
+            Text('Eliminar Categoría'),
           ],
         ),
         content: Text(
-            '\u00bfEst\u00e1s seguro de eliminar "$name"? Esta acci\u00f3n no se puede deshacer.'),
+            '¿Estás seguro de eliminar "$name"? Esta acción no se puede deshacer.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -387,23 +397,28 @@ class _AdminCategoriesScreenState extends ConsumerState<AdminCategoriesScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(ctx);
+
               final ok = await ref
                   .read(categoryManagementControllerProvider)
-                  .deleteCategory(cat['id'].toString());
-              if (!context.mounted) return;
-              Navigator.pop(ctx);
+                  .deleteCategory(categoryMap['id'].toString());
+              if (!mounted) return;
+
+              navigator.pop();
               if (ok) {
                 ref.invalidate(categoryListProvider);
-                ScaffoldMessenger.of(context).showSnackBar(
+                ref.invalidate(user_cat.categoryListProvider);
+                messenger.showSnackBar(
                   const SnackBar(
-                    content: Text('Categor\u00eda eliminada'),
+                    content: Text('Categoría eliminada'),
                     backgroundColor: Colors.green,
                   ),
                 );
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
-                    content: Text('Error al eliminar categor\u00eda'),
+                    content: Text('Error al eliminar categoría'),
                     backgroundColor: Colors.red,
                   ),
                 );
