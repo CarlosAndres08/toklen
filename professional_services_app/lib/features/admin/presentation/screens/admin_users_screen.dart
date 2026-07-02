@@ -164,7 +164,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               DataColumn(label: Text('Estado', style: TextStyle(fontWeight: FontWeight.w700))),
               DataColumn(label: Text('Acciones', style: TextStyle(fontWeight: FontWeight.w700))),
             ],
-            rows: users.map((u) => _buildUserRow(u)).toList(),
+            rows: users.map((u) => _buildUserRow(u as Map<String, dynamic>)).toList(),
           ),
         ),
       );
@@ -173,14 +173,14 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
   DataRow _buildUserRow(Map<String, dynamic> user) {
     final name = user['nombre']?.toString() ?? user['name']?.toString() ?? 'U';
-    final role = user['rol']?.toString() ?? user['role']?.toString() ?? 'client';
+    final role = (user['rol'] ?? user['role'])?.toString() ?? 'client';
     final isSuspended = user['is_suspended'] == true;
 
     return DataRow(
       cells: [
         DataCell(Row(
           children: [
-            CircleAvatar(radius: 16, child: Text(name[0].toUpperCase())),
+            CircleAvatar(radius: 16, child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U')),
             const SizedBox(width: 12),
             Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
@@ -223,7 +223,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
       child: Text(role.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 10)),
     );
   }
@@ -241,18 +241,18 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: CircleAvatar(child: Text(name[0].toUpperCase())),
+        leading: CircleAvatar(child: Text(name.isNotEmpty ? name[0].toUpperCase() : 'U')),
         title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Text(user['email']?.toString() ?? ''),
-        trailing: _buildRoleBadge(user['rol'] ?? 'client'),
+        trailing: _buildRoleBadge((user['rol'] ?? user['role'] ?? 'client').toString()),
         onTap: () => _showEditDialog(user),
       ),
     );
   }
 
   void _showEditDialog(Map<String, dynamic> user) {
-    final nameController = TextEditingController(text: user['nombre'] ?? user['name']);
-    String selectedRole = user['rol'] ?? user['role'] ?? 'client';
+    final nameController = TextEditingController(text: user['nombre']?.toString() ?? user['name']?.toString() ?? '');
+    String selectedRole = (user['rol'] ?? user['role'] ?? 'client').toString();
 
     showDialog(
       context: context,
@@ -264,14 +264,16 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
             TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nombre')),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              initialValue: selectedRole,
+              value: selectedRole,
               decoration: const InputDecoration(labelText: 'Rol'),
               items: const [
                 DropdownMenuItem(value: 'client', child: Text('Cliente')),
                 DropdownMenuItem(value: 'provider', child: Text('Proveedor')),
                 DropdownMenuItem(value: 'admin', child: Text('Administrador')),
               ],
-              onChanged: (v) => selectedRole = v!,
+              onChanged: (v) {
+                if (v != null) selectedRole = v;
+              },
             ),
           ],
         ),
@@ -283,7 +285,6 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               final navigator = Navigator.of(ctx);
 
               final ok = await ref.read(userManagementControllerProvider).updateUser(user['id'].toString(), UserUpdateRequest(nombre: nameController.text, rol: selectedRole));
-              if (!mounted) return;
 
               navigator.pop();
               if (ok) {
@@ -318,7 +319,6 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               final navigator = Navigator.of(ctx);
 
               final ok = await ref.read(userManagementControllerProvider).suspendUser(user['id'].toString(), reasonController.text);
-              if (!mounted) return;
 
               navigator.pop();
               if (ok) {
@@ -351,7 +351,6 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
               final navigator = Navigator.of(ctx);
 
               final ok = await ref.read(userManagementControllerProvider).deleteUser(user['id'].toString());
-              if (!mounted) return;
 
               navigator.pop();
               if (ok) {

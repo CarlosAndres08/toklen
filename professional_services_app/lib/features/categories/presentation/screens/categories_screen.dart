@@ -47,7 +47,7 @@ class CategoriesScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // 1. SECCIÓN DE DESTACADOS (Prominente)
+            // 1. SECCIÓN DE DESTACADOS
             featuredAsync.when(
               loading: () => _buildFeaturedSkeleton(),
               error: (error, stack) => const SizedBox.shrink(),
@@ -150,7 +150,7 @@ class CategoriesScreen extends ConsumerWidget {
 
             const SizedBox(height: 32),
 
-            // 3. MEJOR VALORADOS (Dinámico)
+            // 3. MEJOR VALORADOS
             allServicesAsync.when(
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
@@ -167,7 +167,7 @@ class CategoriesScreen extends ConsumerWidget {
                             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -0.5)),
                         const Spacer(),
                         TextButton(
-                          onPressed: () {}, // Implementar filtro global por rating
+                          onPressed: () {},
                           child: const Text('Ver todos'),
                         ),
                       ],

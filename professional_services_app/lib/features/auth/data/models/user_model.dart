@@ -37,7 +37,7 @@ class UserModel {
   final String? idDocumentUrl;
   final List<BadgeModel> badges;
 
-  // Alias para mantener compatibilidad con código existente si es necesario
+  // Alias para mantener compatibilidad con código existente
   String? get name => nombre;
   String? get role => rol;
   DateTime? get createdAt => fechaCreacion;

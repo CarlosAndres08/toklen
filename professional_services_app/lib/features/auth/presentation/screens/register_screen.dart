@@ -158,7 +158,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text,
-          role: _selectedRole,
+          rol: _selectedRole,
         );
 
     if (!mounted || !created) {

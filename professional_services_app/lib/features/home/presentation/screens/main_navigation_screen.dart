@@ -23,7 +23,7 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   Widget build(BuildContext context) {
     // Obtener el rol del usuario para determinar qué pantalla mostrar en Reservas
     final String userRole =
-        ref.watch(authControllerProvider).value?.user?.role ?? 'client';
+        ref.watch(authControllerProvider).value?.user?.rol ?? 'client';
 
     // 📦 Inyectamos las pantallas reales en las pestañas según el rol
     final List<Widget> screens = [

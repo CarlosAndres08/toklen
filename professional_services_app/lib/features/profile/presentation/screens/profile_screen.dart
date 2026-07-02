@@ -187,19 +187,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
-                            color: user?.role == 'provider' ? AppColors.primary.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
+                            color: user?.rol == 'provider' ? AppColors.primary.withValues(alpha: 0.1) : AppColors.success.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            user?.role == 'admin' 
+                            user?.rol == 'admin'
                                 ? '⚡ ADMINISTRADOR'
-                                : user?.role == 'provider' 
+                                : user?.rol == 'provider'
                                     ? '💎 PROVEEDOR DE SERVICIOS' 
                                     : '👤 CLIENTE',
                             style: TextStyle(
-                              color: user?.role == 'admin' 
+                              color: user?.rol == 'admin'
                                   ? AppColors.error
-                                  : user?.role == 'provider' 
+                                  : user?.rol == 'provider'
                                       ? AppColors.primary 
                                       : AppColors.success,
                               fontWeight: FontWeight.bold,
@@ -271,13 +271,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  QuotesListScreen(isProvider: user?.role == 'provider'),
+                                  QuotesListScreen(isProvider: user?.rol == 'provider'),
                             ),
                           );
                         },
                         icon: const Icon(Icons.request_quote_outlined, color: AppColors.primary),
                         label: Text(
-                          user?.role == 'provider' ? 'Cotizaciones Recibidas' : 'Mis Cotizaciones',
+                          user?.rol == 'provider' ? 'Cotizaciones Recibidas' : 'Mis Cotizaciones',
                           style: const TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         style: OutlinedButton.styleFrom(
@@ -309,7 +309,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      if (user?.role == 'admin') ...[
+                      if (user?.rol == 'admin') ...[
                         OutlinedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -332,7 +332,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         const SizedBox(height: 12),
                       ],
 
-                      if (user?.role == 'provider') ...[
+                      if (user?.rol == 'provider') ...[
                         OutlinedButton.icon(
                           onPressed: () {
                             Navigator.push(

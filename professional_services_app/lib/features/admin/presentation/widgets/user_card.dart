@@ -106,7 +106,7 @@ class UserCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: roleColor.withValues(alpha: 0.1),
+                            color: roleColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -124,7 +124,7 @@ class UserCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
+                              color: Colors.orange.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -143,7 +143,7 @@ class UserCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: Colors.grey.withValues(alpha: 0.1),
+                              color: Colors.grey.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -183,10 +183,10 @@ class UserCard extends StatelessWidget {
   }
 
   String _getName() =>
-      (user['name'] ?? user['nombre'] ?? '').toString();
+      (user['nombre'] ?? user['name'] ?? '').toString();
   String _getEmail() => (user['email'] ?? '').toString();
   String _getRole() =>
-      (user['role'] ?? user['rol'] ?? 'client').toString();
+      (user['rol'] ?? user['role'] ?? 'client').toString();
 
   Color _avatarColor(String role) {
     switch (role) {

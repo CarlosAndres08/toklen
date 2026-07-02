@@ -28,8 +28,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
 
     redirect: (context, state) {
-      // Mientras auth se inicializa, mostrar splash
-      if (authState.isLoading) {
+      // Solo mostrar splash en la carga inicial (cuando no hay valor ni error todavía)
+      if (authState.isLoading && authState.value == null) {
         if (state.uri.path != '/splash') return '/splash';
         return null;
       }

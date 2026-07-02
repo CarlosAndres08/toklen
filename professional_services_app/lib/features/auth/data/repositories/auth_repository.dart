@@ -20,7 +20,7 @@ class AuthRepository {
     required String name,
     required String email,
     required String password,
-    String role = 'client',
+    String rol = 'client',
   }) async {
     try {
       final response = await _client.post(
@@ -29,7 +29,7 @@ class AuthRepository {
           'nombre': name, // Usamos nombre para consistencia con backend
           'email': email,
           'password': password,
-          'rol': role,    // Usamos rol para consistencia con backend
+          'rol': rol,    // Usamos rol para consistencia con backend
         },
       );
 
@@ -48,13 +48,14 @@ class AuthRepository {
     required String password,
   }) async {
     try {
-      // Login usa Form-Data para OAuth2 en FastAPI
+      // Login usa Form-Data para OAuth2 en FastAPI.
+      // Usamos un Map simple con content-type x-www-form-urlencoded para que Dio lo codifique correctamente.
       final response = await _client.post(
         '/api/v1/auth/login',
-        data: FormData.fromMap({
+        data: {
           'username': email,
           'password': password,
-        }),
+        },
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
         ),

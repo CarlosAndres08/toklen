@@ -111,7 +111,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     required String name,
     required String email,
     required String password,
-    required String role,
+    required String rol,
   }) async {
     final AuthState currentState = state.value ?? const AuthState();
     state = AsyncData(
@@ -124,7 +124,7 @@ class AuthController extends AsyncNotifier<AuthState> {
         name: name,
         email: email,
         password: password,
-        role: role,
+        rol: rol,
       );
 
       state = AsyncData(

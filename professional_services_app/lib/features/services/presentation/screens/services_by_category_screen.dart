@@ -34,7 +34,7 @@ class _ServicesByCategoryScreenState
   Widget build(BuildContext context) {
     final servicesAsync = ref.watch(serviceListProvider);
     final authState = ref.watch(authControllerProvider).value;
-    final String userRole = authState?.user?.role ?? 'client';
+    final String userRole = authState?.user?.rol ?? 'client';
     final bool isProvider = userRole == 'provider';
 
     return Scaffold(

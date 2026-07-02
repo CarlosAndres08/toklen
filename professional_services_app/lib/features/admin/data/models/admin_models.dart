@@ -90,7 +90,7 @@ class AdminProfile {
   final int id;
   final String name;
   final String email;
-  final String role;
+  final String rol;
   final String? phone;
   final String? apellido;
 
@@ -98,7 +98,7 @@ class AdminProfile {
     this.id = 0,
     this.name = '',
     this.email = '',
-    this.role = '',
+    this.rol = '',
     this.phone,
     this.apellido,
   });
@@ -108,7 +108,7 @@ class AdminProfile {
       id: json['id'] as int? ?? 0,
       name: json['name']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
-      role: json['role']?.toString() ?? '',
+      rol: (json['rol'] ?? json['role'])?.toString() ?? 'admin',
       phone: json['phone']?.toString(),
       apellido: json['apellido']?.toString(),
     );
